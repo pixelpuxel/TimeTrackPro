@@ -32,6 +32,9 @@ export function TaskInput({ date, onDateChange, selectedProject, onProjectChange
     } as InsertTask);
   };
 
+  const yearStart = startOfYear(date);
+  const yearEnd = endOfYear(date);
+
   return (
     <motion.form
       initial={{ opacity: 0, y: 20 }}
@@ -61,6 +64,7 @@ export function TaskInput({ date, onDateChange, selectedProject, onProjectChange
             <Calendar
               mode="single"
               selected={date}
+              defaultMonth={date}
               onSelect={(newDate) => {
                 if (newDate) {
                   onDateChange(newDate);
@@ -69,9 +73,8 @@ export function TaskInput({ date, onDateChange, selectedProject, onProjectChange
               }}
               initialFocus
               locale={de}
-              defaultMonth={date}
-              fromDate={startOfYear(date)}
-              toDate={endOfYear(date)}
+              fromDate={yearStart}
+              toDate={yearEnd}
             />
           </PopoverContent>
         </Popover>
@@ -81,8 +84,12 @@ export function TaskInput({ date, onDateChange, selectedProject, onProjectChange
           onChange={onProjectChange}
         />
 
-        <Button type="submit" className="w-full">
-          Als erledigt markieren
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={createTask.isPending || !selectedProject}
+        >
+          {createTask.isPending ? "Wird gespeichert..." : "Als erledigt markieren"}
         </Button>
       </div>
     </motion.form>

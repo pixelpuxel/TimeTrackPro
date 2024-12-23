@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, ChevronLeft, ChevronRight, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Task } from "@db/schema";
 
@@ -20,8 +20,9 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const [currentYear, setCurrentYear] = useState(new Date(selectedDate));
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("");
 
-  // Calculate year boundaries
+  // Calculate year boundaries for the current year view
   const startDate = startOfYear(currentYear);
   const endDate = endOfYear(currentYear);
   const days = eachDayOfInterval({ start: startDate, end: endDate });
@@ -40,17 +41,23 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   }, {});
 
   const handleUpdateProject = async (project: Project) => {
+    if (!editName.trim() || !editColor.trim()) return;
+
     try {
-      await updateProject.mutateAsync({ id: project.id, name: editName });
+      await updateProject.mutateAsync({ 
+        id: project.id, 
+        name: editName,
+        color: editColor 
+      });
       setProjectToEdit(null);
       toast({
         title: "Projekt aktualisiert",
-        description: "Der Projektname wurde erfolgreich geändert."
+        description: "Der Projektname und die Farbe wurden erfolgreich geändert."
       });
     } catch (error) {
       toast({
         title: "Fehler",
-        description: "Projektname konnte nicht geändert werden.",
+        description: "Projekt konnte nicht aktualisiert werden.",
         variant: "destructive"
       });
     }
@@ -121,6 +128,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                 onClick={() => {
                   setProjectToEdit(project);
                   setEditName(project.name);
+                  setEditColor(project.color);
                 }}
               >
                 <Pencil className="h-4 w-4 text-gray-500" />
@@ -169,18 +177,30 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
       <Dialog open={!!projectToEdit} onOpenChange={(open) => !open && setProjectToEdit(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Projekt umbenennen</DialogTitle>
+            <DialogTitle>Projekt bearbeiten</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Input
-              placeholder="Neuer Projektname"
+              placeholder="Projektname"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
             />
+            <div className="space-y-2">
+              <label className="text-sm text-gray-500">Projektfarbe</label>
+              <div className="flex items-center space-x-2">
+                <Palette className="h-6 w-6" color={editColor} />
+                <Input 
+                  type="color" 
+                  value={editColor} 
+                  onChange={(e) => setEditColor(e.target.value)} 
+                  className="h-10 p-1"
+                />
+              </div>
+            </div>
             <Button 
               onClick={() => projectToEdit && handleUpdateProject(projectToEdit)} 
               className="w-full"
-              disabled={updateProject.isPending}
+              disabled={updateProject.isPending || !editName.trim() || !editColor.trim()}
             >
               {updateProject.isPending ? "Wird gespeichert..." : "Speichern"}
             </Button>
