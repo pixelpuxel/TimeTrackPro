@@ -155,7 +155,9 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                       const dateStr = format(day, "yyyy-MM-dd");
                       const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
                       const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
-                      const isOutsideYear = !isWithinInterval(day, { start: startDate, end: endDate });
+                      const yearOfDay = day.getFullYear();
+                      const currentYearValue = currentYear.getFullYear();
+                      const isOutsideYear = yearOfDay !== currentYearValue;
 
                       return (
                         <button
