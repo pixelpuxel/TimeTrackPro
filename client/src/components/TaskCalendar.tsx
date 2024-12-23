@@ -20,8 +20,9 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const [currentYear, setCurrentYear] = useState(new Date(selectedDate));
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("");
 
-  // Calculate year boundaries
+  // Calculate year boundaries - exactly from Jan 1 to Dec 31
   const startDate = startOfYear(currentYear);
   const endDate = endOfYear(currentYear);
   const days = eachDayOfInterval({ start: startDate, end: endDate });
@@ -39,18 +40,24 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     return acc;
   }, {});
 
-  const handleUpdateProject = async (project: Project) => {
+  const handleUpdateProject = async () => {
+    if (!projectToEdit) return;
+
     try {
-      await updateProject.mutateAsync({ id: project.id, name: editName });
+      await updateProject.mutateAsync({
+        id: projectToEdit.id,
+        name: editName,
+        color: editColor
+      });
       setProjectToEdit(null);
       toast({
         title: "Projekt aktualisiert",
-        description: "Der Projektname wurde erfolgreich geändert."
+        description: "Die Projektdetails wurden erfolgreich aktualisiert."
       });
     } catch (error) {
       toast({
         title: "Fehler",
-        description: "Projektname konnte nicht geändert werden.",
+        description: "Projektdetails konnten nicht aktualisiert werden.",
         variant: "destructive"
       });
     }
@@ -121,6 +128,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                 onClick={() => {
                   setProjectToEdit(project);
                   setEditName(project.name);
+                  setEditColor(project.color);
                 }}
               >
                 <Pencil className="h-4 w-4 text-gray-500" />
@@ -169,16 +177,28 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
       <Dialog open={!!projectToEdit} onOpenChange={(open) => !open && setProjectToEdit(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Projekt umbenennen</DialogTitle>
+            <DialogTitle>Projekt bearbeiten</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <Input
-              placeholder="Neuer Projektname"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-            />
+            <div className="space-y-2">
+              <label className="text-sm text-gray-500">Projektname</label>
+              <Input
+                placeholder="Projektname"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-gray-500">Projektfarbe</label>
+              <Input
+                type="color"
+                value={editColor}
+                onChange={(e) => setEditColor(e.target.value)}
+                className="h-10 p-1"
+              />
+            </div>
             <Button 
-              onClick={() => projectToEdit && handleUpdateProject(projectToEdit)} 
+              onClick={handleUpdateProject}
               className="w-full"
               disabled={updateProject.isPending}
             >
