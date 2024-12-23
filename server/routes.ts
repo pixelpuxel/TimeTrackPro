@@ -28,6 +28,24 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.delete("/api/projects/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const projectId = parseInt(id);
+
+      // First delete all tasks associated with this project
+      await db.delete(tasks).where(eq(tasks.projectId, projectId));
+
+      // Then delete the project
+      await db.delete(projects).where(eq(projects.id, projectId));
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      res.status(500).json({ message: "Failed to delete project" });
+    }
+  });
+
   // Tasks endpoints
   app.get("/api/tasks", async (req, res) => {
     try {

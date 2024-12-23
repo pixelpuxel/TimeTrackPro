@@ -7,9 +7,11 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { useProjects, useCreateProject } from "@/lib/api";
+import { useProjects, useCreateProject, useDeleteProject } from "@/lib/api";
+import { Trash2 } from "lucide-react";
 import type { Project } from "@db/schema";
 
 interface ProjectSelectorProps {
@@ -22,6 +24,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
   const { data: projects = [] } = useProjects();
   const createProject = useCreateProject();
+  const deleteProject = useDeleteProject();
 
   const handleCreateProject = async () => {
     try {
@@ -30,6 +33,17 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
       setNewProject({ name: "", color: "#6366f1" });
     } catch (error) {
       console.error("Failed to create project:", error);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: number) => {
+    try {
+      await deleteProject.mutateAsync(projectId);
+      if (value === projectId) {
+        onChange(0); // Reset selection if the deleted project was selected
+      }
+    } catch (error) {
+      console.error("Failed to delete project:", error);
     }
   };
 
@@ -53,7 +67,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
         </SelectTrigger>
         <SelectContent>
           {(projects as Project[]).map((project) => (
-            <SelectItem key={project.id} value={project.id.toString()}>
+            <SelectItem key={project.id} value={project.id.toString()} className="flex justify-between">
               <div className="flex items-center gap-2">
                 <div
                   className="w-3 h-3 rounded-full"
@@ -61,10 +75,32 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                 />
                 {project.name}
               </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{project.name}"? This will also delete all tasks associated with this project.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDeleteProject(project.id)}>
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
+
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>

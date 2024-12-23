@@ -9,7 +9,7 @@ export function useTasks(startDate?: Date, endDate?: Date) {
       const params = new URLSearchParams();
       if (startDate) params.append("startDate", startDate.toISOString());
       if (endDate) params.append("endDate", endDate.toISOString());
-      
+
       const res = await fetch(`/api/tasks?${params}`);
       if (!res.ok) throw new Error("Failed to fetch tasks");
       return res.json();
@@ -53,6 +53,21 @@ export function useCreateProject() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    }
+  });
+}
+
+export function useDeleteProject() {
+  return useMutation({
+    mutationFn: async (projectId: number) => {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) throw new Error("Failed to delete project");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
     }
   });
 }
