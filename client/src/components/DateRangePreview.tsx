@@ -3,8 +3,8 @@ import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 interface DateRangePreviewProps {
-  startDate?: Date;
-  endDate?: Date;
+  startDate: Date | null;
+  endDate: Date | null;
   className?: string;
 }
 
