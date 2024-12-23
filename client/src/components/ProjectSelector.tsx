@@ -44,7 +44,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
     }
   };
 
-  const selectedProject = projects.find((p) => p.id === value);
+  const selectedProject = (projects as Project[]).find((p: Project) => p.id === value);
 
   if (isLoading) {
     return <div>Lädt...</div>;
@@ -68,7 +68,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {projects.map((project) => (
+            {(projects as Project[]).map((project: Project) => (
               <SelectItem key={project.id} value={project.id.toString()}>
                 <div className="flex items-center gap-2">
                   <div
