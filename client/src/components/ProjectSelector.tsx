@@ -7,10 +7,12 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useProjects, useCreateProject } from "@/lib/api";
+import { useProjects, useCreateProject, useDeleteProject } from "@/lib/api";
+import { Plus, Trash2 } from "lucide-react";
 import type { Project } from "@db/schema";
 
 interface ProjectSelectorProps {
@@ -21,10 +23,12 @@ interface ProjectSelectorProps {
 export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const { toast } = useToast();
   const [openNewProject, setOpenNewProject] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
 
   const { data: projects = [], isLoading } = useProjects();
   const createProject = useCreateProject();
+  const deleteProject = useDeleteProject();
 
   const handleCreateProject = async () => {
     try {
@@ -39,6 +43,26 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
       toast({
         title: "Fehler",
         description: "Projekt konnte nicht erstellt werden.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteProject = async (project: Project) => {
+    try {
+      await deleteProject.mutateAsync(project.id);
+      setProjectToDelete(null);
+      if (project.id === value) {
+        onChange(projects[0]?.id); // Select first project if current one is deleted
+      }
+      toast({
+        title: "Projekt gelöscht",
+        description: "Das Projekt wurde erfolgreich gelöscht."
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Projekt konnte nicht gelöscht werden.",
         variant: "destructive"
       });
     }
@@ -84,7 +108,10 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
 
         <Dialog open={openNewProject} onOpenChange={setOpenNewProject}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm">Neues Projekt</Button>
+            <Button variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Neues Projekt
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -111,6 +138,39 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
             </div>
           </DialogContent>
         </Dialog>
+
+        {selectedProject && (
+          <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setProjectToDelete(selectedProject)}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Projekt löschen</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Möchten Sie das Projekt "{projectToDelete?.name}" wirklich löschen?
+                  Diese Aktion kann nicht rückgängig gemacht werden.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setProjectToDelete(null)}>
+                  Abbrechen
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => projectToDelete && handleDeleteProject(projectToDelete)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Löschen
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </div>
   );
