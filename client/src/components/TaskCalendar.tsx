@@ -1,12 +1,23 @@
 import { motion } from "framer-motion";
-import { useTasks, useProjects, useUpdateProject } from "@/lib/api";
+import { useTasks, useProjects, useUpdateProject, useDeleteTask } from "@/lib/api";
 import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Task } from "@db/schema";
 
@@ -22,17 +33,20 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const days = eachDayOfInterval({ start: startDate, end: endDate });
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
+  const [taskToDelete, setTaskToDelete] = useState<{ date: Date; projectId: number } | null>(null);
 
   const { data: tasks = [] } = useTasks(startDate, endDate);
   const { data: projects = [] } = useProjects();
   const updateProject = useUpdateProject();
+  const deleteTask = useDeleteTask();
 
   // Group tasks by project and date
-  const tasksByProject = (tasks as Task[]).reduce((acc: Record<number, Record<string, number>>, task: Task) => {
+  const tasksByProject = (tasks as Task[]).reduce((acc: Record<number, Record<string, Task[]>>, task: Task) => {
     if (!task.projectId) return acc;
     if (!acc[task.projectId]) acc[task.projectId] = {};
     const dateStr = format(new Date(task.date), "yyyy-MM-dd");
-    acc[task.projectId][dateStr] = (acc[task.projectId][dateStr] || 0) + 1;
+    if (!acc[task.projectId][dateStr]) acc[task.projectId][dateStr] = [];
+    acc[task.projectId][dateStr].push(task);
     return acc;
   }, {});
 
@@ -48,6 +62,31 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
       toast({
         title: "Fehler",
         description: "Projektname konnte nicht geändert werden.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
+
+    try {
+      const tasksForDate = tasksByProject[taskToDelete.projectId]?.[format(taskToDelete.date, "yyyy-MM-dd")] || [];
+
+      // Delete all tasks for this date and project
+      for (const task of tasksForDate) {
+        await deleteTask.mutateAsync(task.id);
+      }
+
+      setTaskToDelete(null);
+      toast({
+        title: "Aufgaben gelöscht",
+        description: "Die Aufgaben wurden erfolgreich gelöscht."
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Aufgaben konnten nicht gelöscht werden.",
         variant: "destructive"
       });
     }
@@ -108,24 +147,42 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                       if (!day) return <div key={dayIndex} className="bg-gray-100" />;
 
                       const dateStr = format(day, "yyyy-MM-dd");
-                      const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
+                      const tasksForDate = tasksByProject[project.id]?.[dateStr] || [];
+                      const hasTask = tasksForDate.length > 0;
                       const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
 
                       return (
-                        <button
+                        <div
                           key={dateStr}
-                          onClick={() => onSelect(day, project.id)}
-                          className={`
-                            aspect-square
-                            ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
-                            ${isSelected ? 'ring-1 ring-blue-500' : ''}
-                            transition-colors
-                          `}
-                          style={{
-                            backgroundColor: hasTask ? project.color : undefined,
-                          }}
-                          title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksByProject[project.id][dateStr]} Aufgaben)` : ''}`}
-                        />
+                          className="relative group"
+                        >
+                          <button
+                            onClick={() => onSelect(day, project.id)}
+                            className={`
+                              w-full h-full
+                              ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
+                              ${isSelected ? 'ring-1 ring-blue-500' : ''}
+                              transition-colors
+                            `}
+                            style={{
+                              backgroundColor: hasTask ? project.color : undefined,
+                            }}
+                            title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksForDate.length} Aufgaben)` : ''}`}
+                          />
+                          {hasTask && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute top-0 right-0 h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTaskToDelete({ date: day, projectId: project.id });
+                              }}
+                            >
+                              <X className="h-3 w-3 text-red-500" />
+                            </Button>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -157,6 +214,28 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog 
+        open={!!taskToDelete} 
+        onOpenChange={(open) => !open && setTaskToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aufgaben löschen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchten Sie wirklich alle Aufgaben für den {taskToDelete ? format(taskToDelete.date, "d. MMMM yyyy", { locale: de }) : ""} löschen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTaskToDelete(null)}>
+              Abbrechen
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTask}>
+              {deleteTask.isPending ? "Wird gelöscht..." : "Löschen"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="text-xs sm:text-sm text-gray-600">
         Ausgewählt: {format(selectedDate, "d. MMMM yyyy", { locale: de })}
