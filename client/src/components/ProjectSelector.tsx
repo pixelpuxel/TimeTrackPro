@@ -26,9 +26,14 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
 
-  const { data: projects = [] as Project[], isLoading } = useProjects();
+  const { data: projects = [] as Project[], isLoading, error } = useProjects();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
+
+  // Handle API errors
+  if (error) {
+    console.error('Project loading error:', error);
+  }
 
   const handleCreateProject = async () => {
     try {
@@ -40,6 +45,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
         description: "Das neue Projekt wurde erfolgreich erstellt."
       });
     } catch (error) {
+      console.error('Project creation error:', error);
       toast({
         title: "Fehler",
         description: "Projekt konnte nicht erstellt werden.",
@@ -64,6 +70,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
         description: "Das Projekt wurde erfolgreich gelöscht."
       });
     } catch (error) {
+      console.error('Project deletion error:', error);
       toast({
         title: "Fehler",
         description: "Projekt konnte nicht gelöscht werden.",
@@ -81,7 +88,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Select value={value?.toString()} onValueChange={(v) => onChange(parseInt(v))}>
+        <Select value={value?.toString()} onValueChange={(v) => onChange(parseInt(v, 10))}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Projekt auswählen">
               {selectedProject && (
@@ -135,7 +142,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
               <Button 
                 onClick={handleCreateProject} 
                 className="w-full"
-                disabled={createProject.isPending}
+                disabled={createProject.isPending || !newProject.name}
               >
                 {createProject.isPending ? "Wird erstellt..." : "Projekt erstellen"}
               </Button>

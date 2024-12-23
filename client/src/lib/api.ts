@@ -1,9 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
-import type { InsertProject, InsertTask } from "@db/schema";
+import type { InsertProject, InsertTask, Project, Task } from "@db/schema";
 
 export function useTasks(startDate?: Date, endDate?: Date) {
-  return useQuery({
+  return useQuery<Task[]>({
     queryKey: ["/api/tasks", startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -11,14 +11,24 @@ export function useTasks(startDate?: Date, endDate?: Date) {
       if (endDate) params.append("endDate", endDate.toISOString());
 
       const res = await fetch(`/api/tasks?${params}`);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch tasks: ${res.status}`);
+      }
       return res.json();
     }
   });
 }
 
 export function useProjects() {
-  return useQuery({
+  return useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    queryFn: async () => {
+      const res = await fetch("/api/projects");
+      if (!res.ok) {
+        throw new Error(`Failed to fetch projects: ${res.status}`);
+      }
+      return res.json();
+    }
   });
 }
 

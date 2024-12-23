@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { db } from "@db";
+import { db, initDb } from "@db";
 import { projects } from "@db/schema";
 
 const app = express();
@@ -42,21 +42,20 @@ app.use((req, res, next) => {
 (async () => {
   try {
     log("Starting server...");
-    log("Testing database connection...");
+    log("Initializing database connection...");
 
-    // Test database connection and create tables if they don't exist
     try {
-      await db.query.projects.findFirst();
-      log("Database connection successful");
+      await initDb();
+      log("Database initialization successful");
     } catch (error) {
-      log("Error connecting to database:", (error as Error).message);
-      throw error;
+      log("Fatal: Database initialization failed:", (error as Error).message);
+      console.error("Database initialization error details:", error);
+      process.exit(1);
     }
 
     log("Initializing routes...");
     const server = registerRoutes(app);
 
-    // Enhanced error handling for production
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = process.env.NODE_ENV === 'production' 
@@ -65,26 +64,31 @@ app.use((req, res, next) => {
 
       log(`Error handling request: ${(err as Error).message}`);
       res.status(status).json({ message });
-      console.error(err); // Log the full error in production
+      console.error("Full error details:", err);
     });
 
-    // Setup static file serving based on environment
     if (app.get("env") === "development") {
-      log("Setting up development server...");
-      await setupVite(app, server);
+      log("Setting up development server with Vite...");
+      try {
+        await setupVite(app, server);
+        log("Vite setup completed successfully");
+      } catch (error) {
+        log("Error setting up Vite:", (error as Error).message);
+        console.error("Vite setup error details:", error);
+        process.exit(1);
+      }
     } else {
       log("Setting up production server...");
       serveStatic(app);
     }
 
-    // Use port from environment or fallback to 5000
     const PORT = parseInt(process.env.PORT || "5000", 10);
     server.listen(PORT, "0.0.0.0", () => {
       log(`Server running in ${app.get('env')} mode on port ${PORT}`);
     });
   } catch (error) {
     log("Critical error starting server:", (error as Error).message);
-    console.error("Failed to start server:", error);
+    console.error("Full startup error details:", error);
     process.exit(1);
   }
 })();
