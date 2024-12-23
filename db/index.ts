@@ -8,9 +8,10 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+// Enable connection caching to improve performance
 neonConfig.fetchConnectionCache = true;
 
-// Initialize the neon client
+// Initialize the neon client with HTTP configuration
 const sql = neon(process.env.DATABASE_URL);
 
 // Create drizzle database instance
