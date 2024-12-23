@@ -1,11 +1,11 @@
 import { motion } from "framer-motion";
 import { useTasks, useProjects, useUpdateProject } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay, addYears, subYears, isWithinInterval, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay, addYears, subYears, startOfWeek, endOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Task } from "@db/schema";
@@ -22,16 +22,29 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
 
-  // Calculate year boundaries - exactly from Jan 1 to Dec 31
+  // Calculate year boundaries
   const startDate = startOfYear(currentYear);
   const endDate = endOfYear(currentYear);
 
-  // Get the first week that contains January 1st
+  // Get the first day of the first week containing January 1st
   const firstWeekStart = startOfWeek(startDate, { locale: de });
-  // Get the last week that contains December 31st
+  // Get the last day of the last week containing December 31st
   const lastWeekEnd = endOfWeek(endDate, { locale: de });
 
-  // Get all days including the padding days for complete weeks
+  // Debug logging
+  useEffect(() => {
+    console.log('Calendar Debug:', {
+      currentYear: format(currentYear, 'yyyy'),
+      yearStart: format(startDate, 'yyyy-MM-dd'),
+      yearEnd: format(endDate, 'yyyy-MM-dd'),
+      firstWeekStart: format(firstWeekStart, 'yyyy-MM-dd'),
+      lastWeekEnd: format(lastWeekEnd, 'yyyy-MM-dd'),
+      firstWeekNumber: getWeek(startDate, { locale: de }),
+      lastWeekNumber: getWeek(endDate, { locale: de })
+    });
+  }, [currentYear]);
+
+  // Get all days including padding days for complete weeks
   const days = eachDayOfInterval({ start: firstWeekStart, end: lastWeekEnd });
 
   const { data: tasks = [], isLoading: isLoadingTasks } = useTasks(startDate, endDate);
@@ -147,9 +160,9 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
 
             <div className="w-full overflow-x-auto">
               <div className="grid grid-cols-52 gap-[1px] bg-gray-200 p-0.5 w-full">
-                {Object.values(weeksByProject[project.id]).map((week, weekIndex) => (
-                  <div key={weekIndex} className="grid grid-rows-7 gap-[1px] aspect-[1/7] w-full">
-                    {week.map((day, dayIndex) => {
+                {Object.entries(weeksByProject[project.id]).map(([weekNum, weekDays], weekIndex) => (
+                  <div key={weekNum} className="grid grid-rows-7 gap-[1px] aspect-[1/7] w-full">
+                    {weekDays.map((day, dayIndex) => {
                       if (!day) return <div key={dayIndex} className="bg-gray-100" />;
 
                       const dateStr = format(day, "yyyy-MM-dd");
@@ -158,6 +171,16 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                       const yearOfDay = day.getFullYear();
                       const currentYearValue = currentYear.getFullYear();
                       const isOutsideYear = yearOfDay !== currentYearValue;
+
+                      // Debug logging for the first and last weeks
+                      if (weekIndex === 0 || weekIndex === Object.keys(weeksByProject[project.id]).length - 1) {
+                        console.log(`Week ${weekNum} Day ${dayIndex}:`, {
+                          date: format(day, 'yyyy-MM-dd'),
+                          isOutsideYear,
+                          yearOfDay,
+                          currentYearValue
+                        });
+                      }
 
                       return (
                         <button
