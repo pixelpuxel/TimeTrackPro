@@ -20,7 +20,9 @@ interface ProjectSelectorProps {
 }
 
 export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
-  const [open, setOpen] = useState(false);
+  const [openNewProject, setOpenNewProject] = useState(false);
+  const [openProjectList, setOpenProjectList] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
   const { data: projects = [] } = useProjects();
   const createProject = useCreateProject();
@@ -29,19 +31,20 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const handleCreateProject = async () => {
     try {
       await createProject.mutateAsync(newProject);
-      setOpen(false);
+      setOpenNewProject(false);
       setNewProject({ name: "", color: "#6366f1" });
     } catch (error) {
       console.error("Failed to create project:", error);
     }
   };
 
-  const handleDeleteProject = async (projectId: number) => {
+  const handleDeleteProject = async (project: Project) => {
     try {
-      await deleteProject.mutateAsync(projectId);
-      if (value === projectId) {
+      await deleteProject.mutateAsync(project.id);
+      if (value === project.id) {
         onChange(0); // Reset selection if the deleted project was selected
       }
+      setProjectToDelete(null);
     } catch (error) {
       console.error("Failed to delete project:", error);
     }
@@ -50,83 +53,110 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const selectedProject = (projects as Project[]).find((p) => p.id === value);
 
   return (
-    <div className="flex gap-2">
-      <Select value={value?.toString()} onValueChange={(v) => onChange(parseInt(v))}>
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Select project">
-            {selectedProject && (
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: selectedProject.color }}
-                />
-                {selectedProject.name}
-              </div>
-            )}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {(projects as Project[]).map((project) => (
-            <SelectItem key={project.id} value={project.id.toString()} className="flex justify-between">
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: project.color }}
-                />
-                {project.name}
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Project</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{project.name}"? This will also delete all tasks associated with this project.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteProject(project.id)}>
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Select value={value?.toString()} onValueChange={(v) => onChange(parseInt(v))}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select project">
+              {selectedProject && (
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: selectedProject.color }}
+                  />
+                  {selectedProject.name}
+                </div>
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {(projects as Project[]).map((project) => (
+              <SelectItem key={project.id} value={project.id.toString()}>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: project.color }}
+                  />
+                  {project.name}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
+        <Dialog open={openNewProject} onOpenChange={setOpenNewProject}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">New Project</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Project</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder="Project name"
+                value={newProject.name}
+                onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+              />
+              <Input
+                type="color"
+                value={newProject.color}
+                onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
+              />
+              <Button onClick={handleCreateProject} className="w-full">
+                Create Project
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm">New Project</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Project</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              placeholder="Project name"
-              value={newProject.name}
-              onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-            />
-            <Input
-              type="color"
-              value={newProject.color}
-              onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
-            />
-            <Button onClick={handleCreateProject} className="w-full">
-              Create Project
+        <Dialog open={openProjectList} onOpenChange={setOpenProjectList}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Trash2 className="h-4 w-4" />
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Manage Projects</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              {(projects as Project[]).map((project) => (
+                <div key={project.id} className="flex items-center justify-between p-2 rounded hover:bg-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: project.color }}
+                    />
+                    <span>{project.name}</span>
+                  </div>
+                  <AlertDialog open={projectToDelete?.id === project.id} onOpenChange={(open) => !open && setProjectToDelete(null)}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" onClick={() => setProjectToDelete(project)}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{project.name}"? This will also delete all tasks associated with this project.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setProjectToDelete(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteProject(project)}>
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
