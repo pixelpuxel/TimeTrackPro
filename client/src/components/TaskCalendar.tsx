@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
 import { useTasks, useProjects, useUpdateProject } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay } from "date-fns";
+import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay, addYears, subYears, isWithinInterval } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Task } from "@db/schema";
 
@@ -17,14 +17,17 @@ interface TaskCalendarProps {
 
 export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const { toast } = useToast();
-  const startDate = startOfYear(selectedDate);
-  const endDate = endOfYear(selectedDate);
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const [currentYear, setCurrentYear] = useState(new Date(selectedDate));
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
 
-  const { data: tasks = [] } = useTasks(startDate, endDate);
-  const { data: projects = [] } = useProjects();
+  // Calculate year boundaries
+  const startDate = startOfYear(currentYear);
+  const endDate = endOfYear(currentYear);
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const { data: tasks = [], isLoading: isLoadingTasks } = useTasks(startDate, endDate);
+  const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
   const updateProject = useUpdateProject();
 
   // Group tasks by project and date
@@ -58,7 +61,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   (projects as Project[]).forEach((project) => {
     weeksByProject[project.id] = {};
     days.forEach((day) => {
-      const weekNum = getWeek(day);
+      const weekNum = getWeek(day, { locale: de });
       if (!weeksByProject[project.id][weekNum]) {
         weeksByProject[project.id][weekNum] = Array(7).fill(null);
       }
@@ -67,12 +70,36 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     });
   });
 
+  if (isLoadingTasks || isLoadingProjects) {
+    return <div className="p-4 text-center">Lädt...</div>;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6 w-full"
     >
+      <div className="flex items-center justify-between mb-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCurrentYear(subYears(currentYear, 1))}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <h2 className="text-xl font-semibold">
+          {format(currentYear, "yyyy")}
+        </h2>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCurrentYear(addYears(currentYear, 1))}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
       {(projects as Project[]).map((project) => (
         <motion.div
           key={project.id}
@@ -110,19 +137,22 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                       const dateStr = format(day, "yyyy-MM-dd");
                       const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
                       const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
+                      const isOutsideYear = !isWithinInterval(day, { start: startDate, end: endDate });
 
                       return (
                         <button
                           key={dateStr}
-                          onClick={() => onSelect(day, project.id)}
+                          onClick={() => !isOutsideYear && onSelect(day, project.id)}
+                          disabled={isOutsideYear}
                           className={`
                             aspect-square
                             ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
-                            ${isSelected ? 'ring-1 ring-blue-500' : ''}
+                            ${isSelected ? 'ring-2 ring-blue-500' : ''}
+                            ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
                             transition-colors
                           `}
                           style={{
-                            backgroundColor: hasTask ? project.color : undefined,
+                            backgroundColor: hasTask && !isOutsideYear ? project.color : undefined,
                           }}
                           title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksByProject[project.id][dateStr]} Aufgaben)` : ''}`}
                         />

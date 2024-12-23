@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useProjects, useCreateProject, useDeleteProject, useUpdateProject } from "@/lib/api";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, Palette } from "lucide-react";
 import type { Project } from "@db/schema";
 
 interface ProjectSelectorProps {
@@ -27,7 +27,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
   const [editProject, setEditProject] = useState<{ id: number; name: string; color: string } | null>(null);
 
-  const { data: projects = [] as Project[], isLoading, error } = useProjects();
+  const { data: projects = [], isLoading, error } = useProjects();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
@@ -244,15 +244,18 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                 />
                 <div className="space-y-2">
                   <label className="text-sm text-gray-500">Projektfarbe</label>
-                  <Input
-                    type="color"
-                    value={editProject?.color || ''}
-                    onChange={(e) => editProject && setEditProject({
-                      ...editProject,
-                      color: e.target.value
-                    })}
-                    className="h-10 p-1"
-                  />
+                  <div className="flex items-center space-x-2">
+                    <Palette className="h-6 w-6" color={editProject?.color || "#6366f1"} />
+                    <Input 
+                      type="color" 
+                      value={editProject?.color || "#6366f1"} 
+                      onChange={(e) => editProject && setEditProject({ 
+                        ...editProject, 
+                        color: e.target.value 
+                      })} 
+                      className="w-full"
+                    />
+                  </div>
                 </div>
                 <Button 
                   onClick={handleUpdateProject}
