@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useTasks, useProjects, useUpdateProject } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay, addYears, subYears } from "date-fns";
+import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay, addYears, subYears, isWithinInterval } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,13 +20,10 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const [currentYear, setCurrentYear] = useState(new Date(selectedDate));
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
-  const [editColor, setEditColor] = useState("");
 
   // Calculate year boundaries
   const startDate = startOfYear(currentYear);
   const endDate = endOfYear(currentYear);
-
-  // Get all days of the year
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   const { data: tasks = [], isLoading: isLoadingTasks } = useTasks(startDate, endDate);
@@ -42,23 +39,18 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     return acc;
   }, {});
 
-  const handleUpdateProject = async () => {
-    if (!projectToEdit) return;
+  const handleUpdateProject = async (project: Project) => {
     try {
-      await updateProject.mutateAsync({
-        id: projectToEdit.id,
-        name: editName,
-        color: editColor
-      });
+      await updateProject.mutateAsync({ id: project.id, name: editName });
       setProjectToEdit(null);
       toast({
         title: "Projekt aktualisiert",
-        description: "Die Projektdetails wurden erfolgreich aktualisiert."
+        description: "Der Projektname wurde erfolgreich geändert."
       });
     } catch (error) {
       toast({
         title: "Fehler",
-        description: "Projektdetails konnten nicht aktualisiert werden.",
+        description: "Projektname konnte nicht geändert werden.",
         variant: "destructive"
       });
     }
@@ -88,13 +80,11 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6 w-full"
     >
-      {/* Year navigation */}
-      <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm">
+      <div className="flex items-center justify-between mb-4">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setCurrentYear(subYears(currentYear, 1))}
-          className="text-gray-600 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -105,13 +95,11 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
           variant="ghost"
           size="sm"
           onClick={() => setCurrentYear(addYears(currentYear, 1))}
-          className="text-gray-600 hover:text-gray-900"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Projects and calendar grid */}
       {(projects as Project[]).map((project) => (
         <motion.div
           key={project.id}
@@ -133,7 +121,6 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                 onClick={() => {
                   setProjectToEdit(project);
                   setEditName(project.name);
-                  setEditColor(project.color);
                 }}
               >
                 <Pencil className="h-4 w-4 text-gray-500" />
@@ -142,28 +129,30 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
 
             <div className="w-full overflow-x-auto">
               <div className="grid grid-cols-52 gap-[1px] bg-gray-200 p-0.5 w-full">
-                {Object.entries(weeksByProject[project.id]).map(([weekNum, weekDays]) => (
-                  <div key={weekNum} className="grid grid-rows-7 gap-[1px] aspect-[1/7] w-full">
-                    {weekDays.map((day, dayIndex) => {
+                {Object.values(weeksByProject[project.id]).map((week, weekIndex) => (
+                  <div key={weekIndex} className="grid grid-rows-7 gap-[1px] aspect-[1/7] w-full">
+                    {week.map((day, dayIndex) => {
                       if (!day) return <div key={dayIndex} className="bg-gray-100" />;
 
                       const dateStr = format(day, "yyyy-MM-dd");
                       const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
                       const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
+                      const isOutsideYear = !isWithinInterval(day, { start: startDate, end: endDate });
 
                       return (
                         <button
                           key={dateStr}
-                          onClick={() => onSelect(day, project.id)}
+                          onClick={() => !isOutsideYear && onSelect(day, project.id)}
+                          disabled={isOutsideYear}
                           className={`
                             aspect-square
-                            ${hasTask ? 'hover:opacity-80' : 'hover:bg-gray-50'}
+                            ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
                             ${isSelected ? 'ring-2 ring-blue-500' : ''}
-                            ${!day ? 'bg-gray-100' : 'bg-white'}
+                            ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
                             transition-colors
                           `}
                           style={{
-                            backgroundColor: hasTask ? project.color : undefined,
+                            backgroundColor: hasTask && !isOutsideYear ? project.color : undefined,
                           }}
                           title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksByProject[project.id][dateStr]} Aufgaben)` : ''}`}
                         />
@@ -177,32 +166,19 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
         </motion.div>
       ))}
 
-      {/* Project edit dialog */}
       <Dialog open={!!projectToEdit} onOpenChange={(open) => !open && setProjectToEdit(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Projekt bearbeiten</DialogTitle>
+            <DialogTitle>Projekt umbenennen</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm text-gray-500">Projektname</label>
-              <Input
-                placeholder="Projektname"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm text-gray-500">Projektfarbe</label>
-              <Input
-                type="color"
-                value={editColor}
-                onChange={(e) => setEditColor(e.target.value)}
-                className="h-10 p-1"
-              />
-            </div>
+            <Input
+              placeholder="Neuer Projektname"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+            />
             <Button 
-              onClick={handleUpdateProject}
+              onClick={() => projectToEdit && handleUpdateProject(projectToEdit)} 
               className="w-full"
               disabled={updateProject.isPending}
             >
