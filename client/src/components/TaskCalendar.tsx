@@ -13,7 +13,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -49,6 +48,27 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     acc[task.projectId][dateStr].push(task);
     return acc;
   }, {});
+
+  // Organize days into weeks for the grid layout
+  const weeksByProject: { [key: number]: (Date | null)[][] } = {};
+  (projects as Project[]).forEach((project) => {
+    weeksByProject[project.id] = [];
+    let currentWeek: (Date | null)[] = Array(7).fill(null);
+
+    days.forEach((day) => {
+      const dayOfWeek = getDay(day);
+      currentWeek[dayOfWeek] = day;
+
+      if (dayOfWeek === 6) {
+        weeksByProject[project.id].push(currentWeek);
+        currentWeek = Array(7).fill(null);
+      }
+    });
+
+    if (currentWeek.some(day => day !== null)) {
+      weeksByProject[project.id].push(currentWeek);
+    }
+  });
 
   const handleUpdateProject = async (project: Project) => {
     try {
@@ -92,20 +112,6 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     }
   };
 
-  // Organize days by week for vertical layout
-  const weeksByProject: Record<number, Record<number, Date[]>> = {};
-  (projects as Project[]).forEach((project) => {
-    weeksByProject[project.id] = {};
-    days.forEach((day) => {
-      const weekNum = getWeek(day);
-      if (!weeksByProject[project.id][weekNum]) {
-        weeksByProject[project.id][weekNum] = Array(7).fill(null);
-      }
-      const dayIndex = getDay(day);
-      weeksByProject[project.id][weekNum][dayIndex] = day;
-    });
-  });
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -141,7 +147,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
 
             <div className="w-full overflow-x-auto">
               <div className="grid grid-cols-52 gap-[1px] bg-gray-200 p-0.5 w-full">
-                {Object.values(weeksByProject[project.id]).map((week, weekIndex) => (
+                {weeksByProject[project.id].map((week, weekIndex) => (
                   <div key={weekIndex} className="grid grid-rows-7 gap-[1px] aspect-[1/7] w-full">
                     {week.map((day, dayIndex) => {
                       if (!day) return <div key={dayIndex} className="bg-gray-100" />;

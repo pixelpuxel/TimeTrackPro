@@ -10,6 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { PopoverTrigger, PopoverContent, Popover } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface TaskInputProps {
   date: Date;
@@ -19,16 +20,37 @@ interface TaskInputProps {
 }
 
 export function TaskInput({ date, onDateChange, selectedProject, onProjectChange }: TaskInputProps) {
+  const { toast } = useToast();
   const createTask = useCreateTask();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProject) return;
+    if (!selectedProject) {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie ein Projekt aus.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    await createTask.mutateAsync({
-      date: new Date(date),
-      projectId: selectedProject
-    } as InsertTask);
+    try {
+      await createTask.mutateAsync({
+        date: new Date(date),
+        projectId: selectedProject
+      } as InsertTask);
+
+      toast({
+        title: "Aufgabe erstellt",
+        description: "Die Aufgabe wurde erfolgreich markiert."
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Die Aufgabe konnte nicht erstellt werden.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -72,8 +94,12 @@ export function TaskInput({ date, onDateChange, selectedProject, onProjectChange
           onChange={onProjectChange}
         />
 
-        <Button type="submit" className="w-full">
-          Als erledigt markieren
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={createTask.isPending}
+        >
+          {createTask.isPending ? "Wird gespeichert..." : "Als erledigt markieren"}
         </Button>
       </div>
     </motion.form>
