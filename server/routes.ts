@@ -4,6 +4,14 @@ import { db } from "@db";
 import { projects, tasks } from "@db/schema";
 import { eq } from "drizzle-orm";
 
+function logError(context: string, error: unknown) {
+  console.error(`[${context}] Error:`, {
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+    timestamp: new Date().toISOString()
+  });
+}
+
 export function registerRoutes(app: Express): Server {
   // Projects endpoints
   app.get("/api/projects", async (_req, res) => {
@@ -13,7 +21,7 @@ export function registerRoutes(app: Express): Server {
       });
       res.json(allProjects);
     } catch (error) {
-      console.error("Error fetching projects:", error);
+      logError("GET /api/projects", error);
       res.status(500).json({ message: "Failed to fetch projects" });
     }
   });
@@ -23,16 +31,19 @@ export function registerRoutes(app: Express): Server {
       const project = await db.insert(projects).values(req.body).returning();
       res.json(project[0]);
     } catch (error) {
-      console.error("Error creating project:", error);
+      logError("POST /api/projects", error);
       res.status(500).json({ message: "Failed to create project" });
     }
   });
 
-  // New endpoint for updating project name
   app.patch("/api/projects/:id", async (req, res) => {
     try {
       const { id } = req.params;
       const { name } = req.body;
+
+      if (!id || !name) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
 
       const updated = await db
         .update(projects)
@@ -40,9 +51,13 @@ export function registerRoutes(app: Express): Server {
         .where(eq(projects.id, parseInt(id)))
         .returning();
 
+      if (!updated.length) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
       res.json(updated[0]);
     } catch (error) {
-      console.error("Error updating project:", error);
+      logError("PATCH /api/projects/:id", error);
       res.status(500).json({ message: "Failed to update project" });
     }
   });
@@ -52,15 +67,23 @@ export function registerRoutes(app: Express): Server {
       const { id } = req.params;
       const projectId = parseInt(id);
 
+      if (isNaN(projectId)) {
+        return res.status(400).json({ message: "Invalid project ID" });
+      }
+
       // First delete all tasks associated with this project
       await db.delete(tasks).where(eq(tasks.projectId, projectId));
 
       // Then delete the project
-      await db.delete(projects).where(eq(projects.id, projectId));
+      const deleted = await db.delete(projects).where(eq(projects.id, projectId)).returning();
+
+      if (!deleted.length) {
+        return res.status(404).json({ message: "Project not found" });
+      }
 
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting project:", error);
+      logError("DELETE /api/projects/:id", error);
       res.status(500).json({ message: "Failed to delete project" });
     }
   });
@@ -70,45 +93,56 @@ export function registerRoutes(app: Express): Server {
     try {
       const { startDate, endDate } = req.query;
 
-      let query = db.query.tasks.findMany({
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Missing date range parameters" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ message: "Invalid date format" });
+      }
+
+      const allTasks = await db.query.tasks.findMany({
         with: {
           project: true
         },
+        where: (tasks, { and, gte, lte }) => 
+          and(gte(tasks.date, start), lte(tasks.date, end)),
         orderBy: (tasks, { desc }) => [desc(tasks.date)]
       });
 
-      if (startDate && endDate) {
-        const start = new Date(startDate as string);
-        const end = new Date(endDate as string);
-
-        query = db.query.tasks.findMany({
-          with: {
-            project: true
-          },
-          where: (tasks, { and, gte, lte }) => 
-            and(gte(tasks.date, start), lte(tasks.date, end)),
-          orderBy: (tasks, { desc }) => [desc(tasks.date)]
-        });
-      }
-
-      const allTasks = await query;
       res.json(allTasks);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      logError("GET /api/tasks", error);
       res.status(500).json({ message: "Failed to fetch tasks" });
     }
   });
 
   app.post("/api/tasks", async (req, res) => {
     try {
-      const taskData = {
-        projectId: req.body.projectId,
-        date: new Date(req.body.date),
-      };
-      const task = await db.insert(tasks).values(taskData).returning();
+      const { projectId, date } = req.body;
+
+      if (!projectId || !date) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const taskDate = new Date(date);
+      if (isNaN(taskDate.getTime())) {
+        return res.status(400).json({ message: "Invalid date format" });
+      }
+
+      const task = await db.insert(tasks)
+        .values({
+          projectId: parseInt(projectId),
+          date: taskDate,
+        })
+        .returning();
+
       res.json(task[0]);
     } catch (error) {
-      console.error("Error creating task:", error);
+      logError("POST /api/tasks", error);
       res.status(500).json({ message: "Failed to create task" });
     }
   });
@@ -116,10 +150,23 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/tasks/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      await db.delete(tasks).where(eq(tasks.id, parseInt(id)));
+      const taskId = parseInt(id);
+
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Invalid task ID" });
+      }
+
+      const deleted = await db.delete(tasks)
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      if (!deleted.length) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting task:", error);
+      logError("DELETE /api/tasks/:id", error);
       res.status(500).json({ message: "Failed to delete task" });
     }
   });
