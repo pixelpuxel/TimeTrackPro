@@ -26,13 +26,13 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const startDate = startOfYear(currentYear);
   const endDate = endOfYear(currentYear);
 
-  // Get the start of the week for Jan 1st and end of the week for Dec 31st
-  // This ensures we have complete weeks for the grid layout
-  const calendarStart = startOfWeek(startDate, { locale: de });
-  const calendarEnd = endOfWeek(endDate, { locale: de });
+  // Get the first week that contains January 1st
+  const firstWeekStart = startOfWeek(startDate, { locale: de });
+  // Get the last week that contains December 31st
+  const lastWeekEnd = endOfWeek(endDate, { locale: de });
 
-  // Get all days including the padding days
-  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  // Get all days including the padding days for complete weeks
+  const days = eachDayOfInterval({ start: firstWeekStart, end: lastWeekEnd });
 
   const { data: tasks = [], isLoading: isLoadingTasks } = useTasks(startDate, endDate);
   const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
