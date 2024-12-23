@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useTasks, useProjects, useUpdateProject } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay, addYears, subYears, isWithinInterval } from "date-fns";
+import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay, addYears, subYears } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -145,7 +145,9 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                       const dateStr = format(day, "yyyy-MM-dd");
                       const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
                       const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
-                      const isOutsideYear = !isWithinInterval(day, { start: startDate, end: endDate });
+                      const currentYearStart = startOfYear(currentYear);
+                      const currentYearEnd = endOfYear(currentYear);
+                      const isOutsideYear = day < currentYearStart || day > currentYearEnd;
 
                       return (
                         <button
