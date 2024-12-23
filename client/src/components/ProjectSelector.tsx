@@ -7,12 +7,12 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useProjects, useCreateProject, useDeleteProject } from "@/lib/api";
-import { Plus, Trash2 } from "lucide-react";
+import { useProjects, useCreateProject, useDeleteProject, useUpdateProject } from "@/lib/api";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import type { Project } from "@db/schema";
 
 interface ProjectSelectorProps {
@@ -25,10 +25,12 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const [openNewProject, setOpenNewProject] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
+  const [editProject, setEditProject] = useState<{ id: number; name: string; color: string } | null>(null);
 
   const { data: projects = [] as Project[], isLoading, error } = useProjects();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
+  const updateProject = useUpdateProject();
 
   // Handle API errors
   if (error) {
@@ -54,12 +56,34 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
     }
   };
 
+  const handleUpdateProject = async () => {
+    if (!editProject) return;
+
+    try {
+      await updateProject.mutateAsync({
+        id: editProject.id,
+        name: editProject.name,
+        color: editProject.color
+      });
+      setEditProject(null);
+      toast({
+        title: "Projekt aktualisiert",
+        description: "Das Projekt wurde erfolgreich aktualisiert."
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Projekt konnte nicht aktualisiert werden.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleDeleteProject = async (project: Project) => {
     try {
       await deleteProject.mutateAsync(project.id);
       setProjectToDelete(null);
       if (project.id === value) {
-        // Only try to select the first project if there are any projects left
         const remainingProjects = projects.filter((p: Project) => p.id !== project.id);
         if (remainingProjects.length > 0) {
           onChange(remainingProjects[0].id);
@@ -134,11 +158,15 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                 value={newProject.name}
                 onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
               />
-              <Input
-                type="color"
-                value={newProject.color}
-                onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
-              />
+              <div className="space-y-2">
+                <label className="text-sm text-gray-500">Projektfarbe</label>
+                <Input
+                  type="color"
+                  value={newProject.color}
+                  onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
+                  className="h-10 p-1"
+                />
+              </div>
               <Button 
                 onClick={handleCreateProject} 
                 className="w-full"
@@ -152,14 +180,16 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
 
         {selectedProject && (
           <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setProjectToDelete(selectedProject)}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setProjectToDelete(selectedProject)}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Projekt löschen</AlertDialogTitle>
@@ -181,6 +211,59 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+        )}
+
+        {selectedProject && (
+          <Dialog open={!!editProject} onOpenChange={(open) => !open && setEditProject(null)}>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => setEditProject({
+                  id: selectedProject.id,
+                  name: selectedProject.name,
+                  color: selectedProject.color
+                })}
+              >
+                <Pencil className="h-4 w-4 text-gray-500" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Projekt bearbeiten</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input
+                  placeholder="Projektname"
+                  value={editProject?.name || ''}
+                  onChange={(e) => editProject && setEditProject({
+                    ...editProject,
+                    name: e.target.value
+                  })}
+                />
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-500">Projektfarbe</label>
+                  <Input
+                    type="color"
+                    value={editProject?.color || ''}
+                    onChange={(e) => editProject && setEditProject({
+                      ...editProject,
+                      color: e.target.value
+                    })}
+                    className="h-10 p-1"
+                  />
+                </div>
+                <Button 
+                  onClick={handleUpdateProject}
+                  className="w-full"
+                  disabled={updateProject.isPending || !editProject?.name}
+                >
+                  {updateProject.isPending ? "Wird gespeichert..." : "Speichern"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
     </div>

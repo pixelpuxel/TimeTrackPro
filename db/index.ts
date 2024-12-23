@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon, neonConfig } from '@neondatabase/serverless';
 import * as schema from "@db/schema";
+import ws from "ws";
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -8,13 +9,11 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Enable connection caching to improve performance
-neonConfig.fetchConnectionCache = true;
-
-// Initialize the neon client with HTTP configuration
+// Configure neon with WebSocket support for better performance
+neonConfig.webSocketConstructor = ws;
 const sql = neon(process.env.DATABASE_URL);
 
-// Create drizzle database instance
+// Create drizzle database instance with schema
 export const db = drizzle(sql, { schema });
 
 // Helper function to validate database connection

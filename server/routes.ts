@@ -33,11 +33,15 @@ export function registerRoutes(app: Express): Server {
   app.patch("/api/projects/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const { name } = req.body;
+      const { name, color } = req.body;
+
+      const updateData: { name?: string; color?: string } = {};
+      if (name) updateData.name = name;
+      if (color) updateData.color = color;
 
       const updated = await db
         .update(projects)
-        .set({ name })
+        .set(updateData)
         .where(eq(projects.id, parseInt(id)))
         .returning();
 
