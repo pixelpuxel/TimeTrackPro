@@ -26,7 +26,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
 
-  const { data: projects = [], isLoading } = useProjects();
+  const { data: projects = [] as Project[], isLoading } = useProjects();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
 
@@ -53,7 +53,11 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
       await deleteProject.mutateAsync(project.id);
       setProjectToDelete(null);
       if (project.id === value) {
-        onChange(projects[0]?.id); // Select first project if current one is deleted
+        // Only try to select the first project if there are any projects left
+        const remainingProjects = projects.filter((p: Project) => p.id !== project.id);
+        if (remainingProjects.length > 0) {
+          onChange(remainingProjects[0].id);
+        }
       }
       toast({
         title: "Projekt gelöscht",
@@ -68,7 +72,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
     }
   };
 
-  const selectedProject = projects.find((p) => p.id === value);
+  const selectedProject = projects.find((p: Project) => p.id === value);
 
   if (isLoading) {
     return <div>Lädt...</div>;
@@ -92,7 +96,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {projects.map((project) => (
+            {projects.map((project: Project) => (
               <SelectItem key={project.id} value={project.id.toString()}>
                 <div className="flex items-center gap-2">
                   <div

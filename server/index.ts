@@ -2,13 +2,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "@db";
+import { projects } from "@db/schema";
 
 const app = express();
 app.use(express.json());
 app.use(express.text()); // Add support for text/plain for CSV import
 app.use(express.urlencoded({ extended: false }));
 
-// Add production-ready logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -41,10 +41,19 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
-    // Test database connection
-    await db.query.projects.findFirst();
-    log("Database connection successful");
+    log("Starting server...");
+    log("Testing database connection...");
 
+    // Test database connection and create tables if they don't exist
+    try {
+      await db.query.projects.findFirst();
+      log("Database connection successful");
+    } catch (error) {
+      log("Error connecting to database:", (error as Error).message);
+      throw error;
+    }
+
+    log("Initializing routes...");
     const server = registerRoutes(app);
 
     // Enhanced error handling for production
@@ -52,16 +61,19 @@ app.use((req, res, next) => {
       const status = err.status || err.statusCode || 500;
       const message = process.env.NODE_ENV === 'production' 
         ? 'Internal Server Error' 
-        : err.message || 'Internal Server Error';
+        : (err as Error).message || 'Internal Server Error';
 
+      log(`Error handling request: ${(err as Error).message}`);
       res.status(status).json({ message });
       console.error(err); // Log the full error in production
     });
 
     // Setup static file serving based on environment
     if (app.get("env") === "development") {
+      log("Setting up development server...");
       await setupVite(app, server);
     } else {
+      log("Setting up production server...");
       serveStatic(app);
     }
 
@@ -71,6 +83,7 @@ app.use((req, res, next) => {
       log(`Server running in ${app.get('env')} mode on port ${PORT}`);
     });
   } catch (error) {
+    log("Critical error starting server:", (error as Error).message);
     console.error("Failed to start server:", error);
     process.exit(1);
   }
