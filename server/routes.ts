@@ -86,7 +86,7 @@ export function registerRoutes(app: Express): Server {
           with: {
             project: true
           },
-          where: (tasks, { and, gte, lte }) => 
+          where: (tasks, { and, gte, lte }) =>
             and(gte(tasks.date, start), lte(tasks.date, end)),
           orderBy: (tasks, { desc }) => [desc(tasks.date)]
         });
@@ -125,7 +125,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // New CSV export endpoint
+  // CSV export endpoint
   app.get("/api/export/csv", async (_req, res) => {
     try {
       const allTasks = await db.query.tasks.findMany({
@@ -156,7 +156,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // New CSV import endpoint
+  // CSV import endpoint
   app.post("/api/import/csv", async (req, res) => {
     try {
       const records: any[] = [];

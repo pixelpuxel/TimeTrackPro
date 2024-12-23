@@ -11,7 +11,6 @@ export function useTasks(startDate?: Date, endDate?: Date) {
       if (endDate) params.append("endDate", endDate.toISOString());
 
       const res = await fetch(`/api/tasks?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch tasks");
       return res.json();
     }
   });

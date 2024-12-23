@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { TaskCalendar } from "@/components/TaskCalendar";
+import { TaskTable } from "@/components/TaskTable";
 import { TaskInput } from "@/components/TaskInput";
 import { useTasks, exportToCSV, useImportCSV } from "@/lib/api";
 import { format } from "date-fns";
@@ -7,18 +8,22 @@ import { de } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Upload } from "lucide-react";
+import { Download, Upload, Calendar, List } from "lucide-react";
 import type { Task } from "@db/schema";
 
 export function Home() {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedProject, setSelectedProject] = useState<number>();
+  const [showTable, setShowTable] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importCSV = useImportCSV();
 
-  // Only fetch tasks for the selected date
-  const { data: tasks = [] } = useTasks(selectedDate, selectedDate);
+  // Fetch all tasks for table view, but only selected date tasks for calendar
+  const { data: tasks = [] } = useTasks(
+    showTable ? undefined : selectedDate,
+    showTable ? undefined : selectedDate
+  );
 
   const tasksByProject = (tasks as Task[]).reduce((acc: Record<string, Task[]>, task: Task) => {
     if (!task.projectId) return acc;
@@ -50,7 +55,6 @@ export function Home() {
         variant: "destructive"
       });
     } finally {
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -63,6 +67,24 @@ export function Home() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Zeiterfassung</h1>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTable(!showTable)}
+              className="flex items-center gap-2"
+            >
+              {showTable ? (
+                <>
+                  <Calendar className="h-4 w-4" />
+                  Als Kalender anzeigen
+                </>
+              ) : (
+                <>
+                  <List className="h-4 w-4" />
+                  Als Tabelle anzeigen
+                </>
+              )}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -94,12 +116,16 @@ export function Home() {
 
         <div className="grid grid-cols-1 xl:grid-cols-[1fr,400px] gap-6">
           <div>
-            <TaskCalendar
-              selectedDate={selectedDate}
-              onSelect={handleCalendarSelect}
-            />
+            {showTable ? (
+              <TaskTable tasks={tasks as Task[]} />
+            ) : (
+              <TaskCalendar
+                selectedDate={selectedDate}
+                onSelect={handleCalendarSelect}
+              />
+            )}
             <div className="mt-4 text-sm text-gray-600">
-              * Farbige Quadrate zeigen abgeschlossene Aufgaben
+              {!showTable && "* Farbige Quadrate zeigen abgeschlossene Aufgaben"}
             </div>
           </div>
 

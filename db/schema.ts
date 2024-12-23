@@ -34,5 +34,5 @@ export const selectTaskSchema = createSelectSchema(tasks);
 
 export type Project = typeof projects.$inferSelect;
 export type InsertProject = typeof projects.$inferInsert;
-export type Task = typeof tasks.$inferSelect;
+export type Task = typeof tasks.$inferSelect & { project?: Project };
 export type InsertTask = typeof tasks.$inferInsert;
