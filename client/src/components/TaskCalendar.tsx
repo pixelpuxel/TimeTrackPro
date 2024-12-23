@@ -1,7 +1,6 @@
-import { Calendar } from "@/components/ui/calendar";
 import { motion } from "framer-motion";
 import { useTasks } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachMonthOfInterval, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfYear, endOfYear, eachDayOfInterval } from "date-fns";
 
 interface TaskCalendarProps {
   selectedDate: Date;
@@ -11,7 +10,7 @@ interface TaskCalendarProps {
 export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const startDate = startOfYear(selectedDate);
   const endDate = endOfYear(selectedDate);
-  const months = eachMonthOfInterval({ start: startDate, end: endDate });
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   const { data: tasks = [] } = useTasks(startDate, endDate);
 
@@ -27,39 +26,40 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
       animate={{ opacity: 1, y: 0 }}
       className="p-4 bg-white rounded-lg shadow-sm"
     >
-      <div className="grid grid-cols-3 gap-4 max-h-[800px] overflow-y-auto">
-        {months.map((month) => (
-          <div key={month.toISOString()} className="p-2">
-            <h3 className="text-sm font-semibold mb-2">
-              {format(month, "MMMM yyyy")}
-            </h3>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={onSelect}
-              month={month}
-              className="w-full"
-              modifiers={{
-                hasTask: (date) => {
-                  const dateStr = format(date, "yyyy-MM-dd");
-                  return !!tasksByDate[dateStr];
-                }
-              }}
-              modifiersStyles={{
-                hasTask: {
-                  backgroundColor: "rgb(219 234 254)",
-                  color: "rgb(29 78 216)",
-                  fontWeight: "bold"
-                }
-              }}
-              // Disable navigation since we're showing all months
-              disabled={{
-                before: startOfMonth(month),
-                after: endOfMonth(month)
-              }}
-            />
+      <div className="space-y-4">
+        <div className="grid grid-cols-53 gap-px bg-gray-200 rounded-lg p-1">
+          {days.map((day) => {
+            const dateStr = format(day, "yyyy-MM-dd");
+            const hasTask = !!tasksByDate[dateStr];
+            const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
+
+            return (
+              <button
+                key={dateStr}
+                onClick={() => onSelect(day)}
+                className={`
+                  w-4 h-4 rounded-sm flex items-center justify-center text-xs
+                  ${hasTask ? 'bg-blue-100 hover:bg-blue-200' : 'bg-white hover:bg-gray-50'}
+                  ${isSelected ? 'ring-2 ring-blue-500' : ''}
+                  transition-colors
+                `}
+                title={`${format(day, "MMMM d, yyyy")}${hasTask ? ` (${tasksByDate[dateStr]} tasks)` : ''}`}
+              >
+                {/* Show a dot for days with tasks */}
+                {hasTask && (
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-sm text-gray-600 flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-blue-500" />
+            <span>Has tasks</span>
           </div>
-        ))}
+          <div>Selected: {format(selectedDate, "MMMM d, yyyy")}</div>
+        </div>
       </div>
     </motion.div>
   );
