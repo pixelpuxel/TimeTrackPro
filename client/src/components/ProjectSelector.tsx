@@ -7,9 +7,9 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { useProjects, useCreateProject, useDeleteProject, useUpdateProject } from "@/lib/api";
 import { Trash2, Pencil } from "lucide-react";
 import type { Project } from "@db/schema";
@@ -20,14 +20,13 @@ interface ProjectSelectorProps {
 }
 
 export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
+  const { toast } = useToast();
   const [openNewProject, setOpenNewProject] = useState(false);
-  const [openProjectList, setOpenProjectList] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
   const [editName, setEditName] = useState("");
 
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [], isLoading } = useProjects();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
@@ -37,20 +36,16 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
       await createProject.mutateAsync(newProject);
       setOpenNewProject(false);
       setNewProject({ name: "", color: "#6366f1" });
+      toast({
+        title: "Projekt erstellt",
+        description: "Das neue Projekt wurde erfolgreich erstellt."
+      });
     } catch (error) {
-      console.error("Failed to create project:", error);
-    }
-  };
-
-  const handleDeleteProject = async (project: Project) => {
-    try {
-      await deleteProject.mutateAsync(project.id);
-      if (value === project.id) {
-        onChange(0);
-      }
-      setProjectToDelete(null);
-    } catch (error) {
-      console.error("Failed to delete project:", error);
+      toast({
+        title: "Fehler",
+        description: "Projekt konnte nicht erstellt werden.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -58,16 +53,28 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
     try {
       await updateProject.mutateAsync({ id: project.id, name: editName });
       setProjectToEdit(null);
+      toast({
+        title: "Projekt aktualisiert",
+        description: "Der Projektname wurde erfolgreich geändert."
+      });
     } catch (error) {
-      console.error("Failed to update project:", error);
+      toast({
+        title: "Fehler",
+        description: "Projektname konnte nicht geändert werden.",
+        variant: "destructive"
+      });
     }
   };
 
-  const selectedProject = (projects as Project[]).find((p) => p.id === value);
+  const selectedProject = projects.find((p) => p.id === value);
+
+  if (isLoading) {
+    return <div>Lädt...</div>;
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <Select value={value?.toString()} onValueChange={(v) => onChange(parseInt(v))}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Projekt auswählen">
@@ -77,20 +84,50 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: selectedProject.color }}
                   />
-                  {selectedProject.name}
+                  <span className="flex items-center gap-2">
+                    {selectedProject.name}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-4 w-4 p-0"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setProjectToEdit(selectedProject);
+                        setEditName(selectedProject.name);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 text-gray-500" />
+                    </Button>
+                  </span>
                 </div>
               )}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {(projects as Project[]).map((project) => (
+            {projects.map((project) => (
               <SelectItem key={project.id} value={project.id.toString()}>
                 <div className="flex items-center gap-2">
                   <div
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: project.color }}
                   />
-                  {project.name}
+                  <span className="flex items-center gap-2">
+                    {project.name}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-4 w-4 p-0"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setProjectToEdit(project);
+                        setEditName(project.name);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 text-gray-500" />
+                    </Button>
+                  </span>
                 </div>
               </SelectItem>
             ))}
@@ -116,66 +153,13 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                 value={newProject.color}
                 onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
               />
-              <Button onClick={handleCreateProject} className="w-full">
-                Projekt erstellen
+              <Button 
+                onClick={handleCreateProject} 
+                className="w-full"
+                disabled={createProject.isPending}
+              >
+                {createProject.isPending ? "Wird erstellt..." : "Projekt erstellen"}
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={openProjectList} onOpenChange={setOpenProjectList}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Projekte verwalten</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2">
-              {(projects as Project[]).map((project) => (
-                <div key={project.id} className="flex items-center justify-between p-2 rounded hover:bg-gray-100">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: project.color }}
-                    />
-                    <span>{project.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setProjectToEdit(project);
-                        setEditName(project.name);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4 text-gray-500" />
-                    </Button>
-                  </div>
-                  <AlertDialog open={projectToDelete?.id === project.id} onOpenChange={(open) => !open && setProjectToDelete(null)}>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" onClick={() => setProjectToDelete(project)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Projekt löschen</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Sind Sie sicher, dass Sie "{project.name}" löschen möchten? Dadurch werden auch alle zugehörigen Aufgaben gelöscht.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setProjectToDelete(null)}>Abbrechen</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteProject(project)}>
-                          Löschen
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
             </div>
           </DialogContent>
         </Dialog>
@@ -191,8 +175,12 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
               />
-              <Button onClick={() => projectToEdit && handleUpdateProject(projectToEdit)} className="w-full">
-                Speichern
+              <Button 
+                onClick={() => projectToEdit && handleUpdateProject(projectToEdit)} 
+                className="w-full"
+                disabled={updateProject.isPending}
+              >
+                {updateProject.isPending ? "Wird gespeichert..." : "Speichern"}
               </Button>
             </div>
           </DialogContent>
