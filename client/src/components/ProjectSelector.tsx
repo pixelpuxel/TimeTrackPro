@@ -10,8 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useProjects, useCreateProject, useDeleteProject, useUpdateProject } from "@/lib/api";
-import { Trash2, Pencil } from "lucide-react";
+import { useProjects, useCreateProject } from "@/lib/api";
 import type { Project } from "@db/schema";
 
 interface ProjectSelectorProps {
@@ -22,14 +21,10 @@ interface ProjectSelectorProps {
 export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const { toast } = useToast();
   const [openNewProject, setOpenNewProject] = useState(false);
-  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
-  const [editName, setEditName] = useState("");
 
   const { data: projects = [], isLoading } = useProjects();
   const createProject = useCreateProject();
-  const deleteProject = useDeleteProject();
-  const updateProject = useUpdateProject();
 
   const handleCreateProject = async () => {
     try {
@@ -44,23 +39,6 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
       toast({
         title: "Fehler",
         description: "Projekt konnte nicht erstellt werden.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleUpdateProject = async (project: Project) => {
-    try {
-      await updateProject.mutateAsync({ id: project.id, name: editName });
-      setProjectToEdit(null);
-      toast({
-        title: "Projekt aktualisiert",
-        description: "Der Projektname wurde erfolgreich geändert."
-      });
-    } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Projektname konnte nicht geändert werden.",
         variant: "destructive"
       });
     }
@@ -84,22 +62,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: selectedProject.color }}
                   />
-                  <span className="flex items-center gap-2">
-                    {selectedProject.name}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setProjectToEdit(selectedProject);
-                        setEditName(selectedProject.name);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4 text-gray-500" />
-                    </Button>
-                  </span>
+                  <span>{selectedProject.name}</span>
                 </div>
               )}
             </SelectValue>
@@ -112,22 +75,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: project.color }}
                   />
-                  <span className="flex items-center gap-2">
-                    {project.name}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setProjectToEdit(project);
-                        setEditName(project.name);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4 text-gray-500" />
-                    </Button>
-                  </span>
+                  <span>{project.name}</span>
                 </div>
               </SelectItem>
             ))}
@@ -159,28 +107,6 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                 disabled={createProject.isPending}
               >
                 {createProject.isPending ? "Wird erstellt..." : "Projekt erstellen"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={!!projectToEdit} onOpenChange={(open) => !open && setProjectToEdit(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Projekt umbenennen</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Input
-                placeholder="Neuer Projektname"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-              <Button 
-                onClick={() => projectToEdit && handleUpdateProject(projectToEdit)} 
-                className="w-full"
-                disabled={updateProject.isPending}
-              >
-                {updateProject.isPending ? "Wird gespeichert..." : "Speichern"}
               </Button>
             </div>
           </DialogContent>
