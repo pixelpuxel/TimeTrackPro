@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useTasks, useProjects } from "@/lib/api";
 import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay } from "date-fns";
+import { de } from "date-fns/locale";
 import type { Project, Task } from "@db/schema";
 
 interface TaskCalendarProps {
@@ -34,7 +35,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
       if (!weeksByProject[project.id][weekNum]) {
         weeksByProject[project.id][weekNum] = Array(7).fill(null);
       }
-      const dayIndex = getDay(day); // 0 = Sunday, 1 = Monday, etc.
+      const dayIndex = getDay(day);
       weeksByProject[project.id][weekNum][dayIndex] = day;
     });
   });
@@ -43,14 +44,14 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6 w-full" // Added w-full for full width
+      className="space-y-6 w-full"
     >
       {(projects as Project[]).map((project) => (
         <motion.div
           key={project.id}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-2 sm:p-4 bg-white rounded-lg shadow-sm w-full" //Added w-full here
+          className="p-2 sm:p-4 bg-white rounded-lg shadow-sm w-full"
         >
           <div className="space-y-2 sm:space-y-4">
             <div className="flex items-center gap-2 mb-2">
@@ -62,9 +63,9 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
             </div>
 
             <div className="w-full overflow-x-auto">
-              <div className="grid grid-cols-52 gap-[1px] bg-gray-200 p-0.5 w-full"> {/* Added w-full here */}
+              <div className="grid grid-cols-52 gap-[1px] bg-gray-200 p-0.5 w-full">
                 {Object.values(weeksByProject[project.id]).map((week, weekIndex) => (
-                  <div key={weekIndex} className="grid grid-rows-7 gap-[1px] aspect-[1/7] w-full"> {/* Added w-full here */}
+                  <div key={weekIndex} className="grid grid-rows-7 gap-[1px] aspect-[1/7] w-full">
                     {week.map((day, dayIndex) => {
                       if (!day) return <div key={dayIndex} className="bg-gray-100" />;
 
@@ -85,7 +86,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                           style={{
                             backgroundColor: hasTask ? project.color : undefined,
                           }}
-                          title={`${format(day, "MMMM d, yyyy")}${hasTask ? ` (${tasksByProject[project.id][dateStr]} tasks)` : ''}`}
+                          title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksByProject[project.id][dateStr]} Aufgaben)` : ''}`}
                         />
                       );
                     })}
@@ -98,7 +99,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
       ))}
 
       <div className="text-xs sm:text-sm text-gray-600">
-        Selected: {format(selectedDate, "MMMM d, yyyy")}
+        Ausgewählt: {format(selectedDate, "d. MMMM yyyy", { locale: de })}
       </div>
     </motion.div>
   );

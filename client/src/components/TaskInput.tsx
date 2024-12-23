@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
+import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./ProjectSelector";
 import { useCreateTask } from "@/lib/api";
@@ -37,7 +38,7 @@ export function TaskInput({ date, onDateChange }: TaskInputProps) {
       onSubmit={handleSubmit}
     >
       <h2 className="text-lg font-semibold">
-        Mark task for {format(date, "MMMM d, yyyy")}
+        Aufgabe markieren für {format(date, "d. MMMM yyyy", { locale: de })}
       </h2>
 
       <div className="space-y-3">
@@ -51,7 +52,7 @@ export function TaskInput({ date, onDateChange }: TaskInputProps) {
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {format(date, "PPP")}
+              {format(date, "PPP", { locale: de })}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -60,6 +61,7 @@ export function TaskInput({ date, onDateChange }: TaskInputProps) {
               selected={date}
               onSelect={(date) => date && onDateChange(date)}
               initialFocus
+              locale={de}
             />
           </PopoverContent>
         </Popover>
@@ -70,7 +72,7 @@ export function TaskInput({ date, onDateChange }: TaskInputProps) {
         />
 
         <Button type="submit" className="w-full">
-          Mark as Complete
+          Als erledigt markieren
         </Button>
       </div>
     </motion.form>

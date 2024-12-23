@@ -57,7 +57,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
       <div className="flex gap-2">
         <Select value={value?.toString()} onValueChange={(v) => onChange(parseInt(v))}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select project">
+            <SelectValue placeholder="Projekt auswählen">
               {selectedProject && (
                 <div className="flex items-center gap-2">
                   <div
@@ -86,15 +86,15 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
 
         <Dialog open={openNewProject} onOpenChange={setOpenNewProject}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm">New Project</Button>
+            <Button variant="outline" size="sm">Neues Projekt</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Project</DialogTitle>
+              <DialogTitle>Neues Projekt erstellen</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <Input
-                placeholder="Project name"
+                placeholder="Projektname"
                 value={newProject.name}
                 onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
               />
@@ -104,7 +104,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                 onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
               />
               <Button onClick={handleCreateProject} className="w-full">
-                Create Project
+                Projekt erstellen
               </Button>
             </div>
           </DialogContent>
@@ -118,7 +118,7 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Manage Projects</DialogTitle>
+              <DialogTitle>Projekte verwalten</DialogTitle>
             </DialogHeader>
             <div className="space-y-2">
               {(projects as Project[]).map((project) => (
@@ -138,15 +138,15 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                        <AlertDialogTitle>Projekt löschen</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete "{project.name}"? This will also delete all tasks associated with this project.
+                          Sind Sie sicher, dass Sie "{project.name}" löschen möchten? Dadurch werden auch alle zugehörigen Aufgaben gelöscht.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setProjectToDelete(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setProjectToDelete(null)}>Abbrechen</AlertDialogCancel>
                         <AlertDialogAction onClick={() => handleDeleteProject(project)}>
-                          Delete
+                          Löschen
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

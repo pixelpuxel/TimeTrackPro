@@ -3,6 +3,7 @@ import { TaskCalendar } from "@/components/TaskCalendar";
 import { TaskInput } from "@/components/TaskInput";
 import { useTasks } from "@/lib/api";
 import { format } from "date-fns";
+import { de } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Task } from "@db/schema";
 
@@ -23,7 +24,7 @@ export function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1400px] mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Time Tracker</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Zeiterfassung</h1>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1fr,400px] gap-6">
           <div>
@@ -32,7 +33,7 @@ export function Home() {
               onSelect={(date) => date && setSelectedDate(date)}
             />
             <div className="mt-4 text-sm text-gray-600">
-              * Colored squares indicate completed tasks
+              * Farbige Quadrate zeigen abgeschlossene Aufgaben
             </div>
           </div>
 
@@ -52,9 +53,9 @@ export function Home() {
                   transition={{ delay: index * 0.1 }}
                   className="bg-white p-4 rounded-lg shadow-sm"
                 >
-                  <h3 className="font-semibold text-lg mb-3">Project {projectId}</h3>
+                  <h3 className="font-semibold text-lg mb-3">Projekt {projectId}</h3>
                   <div>
-                    Task completed on {format(selectedDate, "MMMM d, yyyy")}
+                    Aufgabe abgeschlossen am {format(selectedDate, "d. MMMM yyyy", { locale: de })}
                   </div>
                 </motion.div>
               ))}
