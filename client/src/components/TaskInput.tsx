@@ -20,6 +20,7 @@ interface TaskInputProps {
 
 export function TaskInput({ date, onDateChange, selectedProject, onProjectChange }: TaskInputProps) {
   const createTask = useCreateTask();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +44,7 @@ export function TaskInput({ date, onDateChange, selectedProject, onProjectChange
       </h2>
 
       <div className="space-y-3">
-        <Popover>
+        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -60,9 +61,15 @@ export function TaskInput({ date, onDateChange, selectedProject, onProjectChange
             <Calendar
               mode="single"
               selected={date}
-              onSelect={(date) => date && onDateChange(date)}
+              onSelect={(newDate) => {
+                if (newDate) {
+                  onDateChange(newDate);
+                  setIsCalendarOpen(false);
+                }
+              }}
               initialFocus
               locale={de}
+              defaultMonth={date}
             />
           </PopoverContent>
         </Popover>
