@@ -12,9 +12,11 @@ export default {
       },
       gridTemplateColumns: {
         '52': 'repeat(52, minmax(0, 1fr))',
+        '31': 'repeat(31, minmax(0, 1fr))',
       },
       gridTemplateRows: {
         '7': 'repeat(7, minmax(0, 1fr))',
+        '12': 'repeat(12, minmax(0, 1fr))',
       },
       colors: {
         background: "hsl(var(--background))",

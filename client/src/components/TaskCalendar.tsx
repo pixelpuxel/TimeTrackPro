@@ -18,7 +18,7 @@ interface TaskCalendarProps {
 
 export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const { toast } = useToast();
-  const [currentYear, setCurrentYear] = useState(new Date(selectedDate));
+  const [currentYear, setCurrentYear] = useState<Date>(new Date(selectedDate));
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
