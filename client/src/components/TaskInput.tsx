@@ -14,19 +14,20 @@ import { CalendarIcon } from "lucide-react";
 interface TaskInputProps {
   date: Date;
   onDateChange: (date: Date) => void;
+  selectedProject?: number;
+  onProjectChange: (projectId: number) => void;
 }
 
-export function TaskInput({ date, onDateChange }: TaskInputProps) {
-  const [projectId, setProjectId] = useState<number>();
+export function TaskInput({ date, onDateChange, selectedProject, onProjectChange }: TaskInputProps) {
   const createTask = useCreateTask();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!projectId) return;
+    if (!selectedProject) return;
 
     await createTask.mutateAsync({
       date: new Date(date),
-      projectId: projectId
+      projectId: selectedProject
     } as InsertTask);
   };
 
@@ -67,8 +68,8 @@ export function TaskInput({ date, onDateChange }: TaskInputProps) {
         </Popover>
 
         <ProjectSelector
-          value={projectId}
-          onChange={setProjectId}
+          value={selectedProject}
+          onChange={onProjectChange}
         />
 
         <Button type="submit" className="w-full">

@@ -6,7 +6,7 @@ import type { Project, Task } from "@db/schema";
 
 interface TaskCalendarProps {
   selectedDate: Date;
-  onSelect: (date: Date | undefined) => void;
+  onSelect: (date: Date, projectId: number) => void;
 }
 
 export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
@@ -76,7 +76,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                       return (
                         <button
                           key={dateStr}
-                          onClick={() => onSelect(day)}
+                          onClick={() => onSelect(day, project.id)}
                           className={`
                             aspect-square
                             ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}

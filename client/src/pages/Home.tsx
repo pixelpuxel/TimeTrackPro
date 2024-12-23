@@ -9,6 +9,7 @@ import type { Task } from "@db/schema";
 
 export function Home() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedProject, setSelectedProject] = useState<number>();
 
   // Only fetch tasks for the selected date
   const { data: tasks = [] } = useTasks(selectedDate, selectedDate);
@@ -21,6 +22,11 @@ export function Home() {
     return acc;
   }, {});
 
+  const handleCalendarSelect = (date: Date, projectId: number) => {
+    setSelectedDate(date);
+    setSelectedProject(projectId);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1400px] mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -30,7 +36,7 @@ export function Home() {
           <div>
             <TaskCalendar
               selectedDate={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
+              onSelect={handleCalendarSelect}
             />
             <div className="mt-4 text-sm text-gray-600">
               * Farbige Quadrate zeigen abgeschlossene Aufgaben
@@ -41,6 +47,8 @@ export function Home() {
             <TaskInput 
               date={selectedDate} 
               onDateChange={setSelectedDate}
+              selectedProject={selectedProject}
+              onProjectChange={setSelectedProject}
             />
 
             <AnimatePresence>
