@@ -1,22 +1,12 @@
 import { motion } from "framer-motion";
-import { useTasks, useProjects, useUpdateProject, useDeleteTask } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachDayOfInterval, getDay, startOfWeek, addDays } from "date-fns";
+import { useTasks, useProjects, useUpdateProject } from "@/lib/api";
+import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { Pencil, X } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Task } from "@db/schema";
 
@@ -25,9 +15,6 @@ interface TaskCalendarProps {
   onSelect: (date: Date, projectId: number) => void;
 }
 
-type TasksByProject = Record<number, Record<string, Task[]>>;
-type WeeksByProject = Record<number, Date[][]>;
-
 export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const { toast } = useToast();
   const startDate = startOfYear(selectedDate);
@@ -35,55 +22,17 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const days = eachDayOfInterval({ start: startDate, end: endDate });
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
-  const [taskToDelete, setTaskToDelete] = useState<{ date: Date; projectId: number } | null>(null);
 
-  const { data: tasks = [], isError: tasksError } = useTasks(startDate, endDate);
-  const { data: projects = [], isError: projectsError } = useProjects();
+  const { data: tasks = [] } = useTasks(startDate, endDate);
+  const { data: projects = [] } = useProjects();
   const updateProject = useUpdateProject();
-  const deleteTask = useDeleteTask();
-
-  // Handle potential data fetching errors
-  if (tasksError || projectsError) {
-    return (
-      <div className="p-4 text-red-500">
-        Error loading calendar data. Please try refreshing the page.
-      </div>
-    );
-  }
 
   // Group tasks by project and date
-  const tasksByProject = (tasks as Task[]).reduce<TasksByProject>((acc, task) => {
+  const tasksByProject = (tasks as Task[]).reduce((acc: Record<number, Record<string, number>>, task: Task) => {
     if (!task.projectId) return acc;
     if (!acc[task.projectId]) acc[task.projectId] = {};
     const dateStr = format(new Date(task.date), "yyyy-MM-dd");
-    if (!acc[task.projectId][dateStr]) acc[task.projectId][dateStr] = [];
-    acc[task.projectId][dateStr].push(task);
-    return acc;
-  }, {});
-
-  // Organize days into weeks for the grid layout
-  const weeksByProject: WeeksByProject = (projects as Project[]).reduce<WeeksByProject>((acc, project) => {
-    acc[project.id] = [];
-    let currentWeek: Date[] = [];
-    let currentDate = startDate;
-
-    while (currentDate <= endDate) {
-      if (getDay(currentDate) === 0 && currentWeek.length > 0) {
-        acc[project.id].push(currentWeek);
-        currentWeek = [];
-      }
-      currentWeek.push(currentDate);
-      currentDate = addDays(currentDate, 1);
-    }
-
-    if (currentWeek.length > 0) {
-      // Fill the last week with remaining days
-      while (currentWeek.length < 7) {
-        currentWeek.push(addDays(currentWeek[currentWeek.length - 1], 1));
-      }
-      acc[project.id].push(currentWeek);
-    }
-
+    acc[task.projectId][dateStr] = (acc[task.projectId][dateStr] || 0) + 1;
     return acc;
   }, {});
 
@@ -96,7 +45,6 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
         description: "Der Projektname wurde erfolgreich geändert."
       });
     } catch (error) {
-      console.error("Error updating project:", error);
       toast({
         title: "Fehler",
         description: "Projektname konnte nicht geändert werden.",
@@ -105,32 +53,19 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     }
   };
 
-  const handleDeleteTask = async () => {
-    if (!taskToDelete) return;
-
-    try {
-      const dateStr = format(taskToDelete.date, "yyyy-MM-dd");
-      const tasksForDate = tasksByProject[taskToDelete.projectId]?.[dateStr] || [];
-
-      // Delete all tasks for this date and project
-      for (const task of tasksForDate) {
-        await deleteTask.mutateAsync(task.id);
+  // Organize days by week for vertical layout
+  const weeksByProject: Record<number, Record<number, Date[]>> = {};
+  (projects as Project[]).forEach((project) => {
+    weeksByProject[project.id] = {};
+    days.forEach((day) => {
+      const weekNum = getWeek(day);
+      if (!weeksByProject[project.id][weekNum]) {
+        weeksByProject[project.id][weekNum] = Array(7).fill(null);
       }
-
-      setTaskToDelete(null);
-      toast({
-        title: "Aufgaben gelöscht",
-        description: "Die Aufgaben wurden erfolgreich gelöscht."
-      });
-    } catch (error) {
-      console.error("Error deleting tasks:", error);
-      toast({
-        title: "Fehler",
-        description: "Aufgaben konnten nicht gelöscht werden.",
-        variant: "destructive"
-      });
-    }
-  };
+      const dayIndex = getDay(day);
+      weeksByProject[project.id][weekNum][dayIndex] = day;
+    });
+  });
 
   return (
     <motion.div
@@ -155,7 +90,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-2 h-6 w-6 p-0"
+                className="h-6 w-6 p-0"
                 onClick={() => {
                   setProjectToEdit(project);
                   setEditName(project.name);
@@ -167,51 +102,30 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
 
             <div className="w-full overflow-x-auto">
               <div className="grid grid-cols-52 gap-[1px] bg-gray-200 p-0.5 w-full">
-                {weeksByProject[project.id].map((week, weekIndex) => (
+                {Object.values(weeksByProject[project.id]).map((week, weekIndex) => (
                   <div key={weekIndex} className="grid grid-rows-7 gap-[1px] aspect-[1/7] w-full">
                     {week.map((day, dayIndex) => {
+                      if (!day) return <div key={dayIndex} className="bg-gray-100" />;
+
                       const dateStr = format(day, "yyyy-MM-dd");
-                      const tasksForDate = tasksByProject[project.id]?.[dateStr] || [];
-                      const hasTask = tasksForDate.length > 0;
+                      const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
                       const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
 
                       return (
-                        <div
+                        <button
                           key={dateStr}
-                          className="relative group"
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onSelect(day, project.id);
-                            }}
-                            className={`
-                              w-full h-full
-                              ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
-                              ${isSelected ? 'ring-2 ring-blue-500' : ''}
-                              transition-colors
-                            `}
-                            style={{
-                              backgroundColor: hasTask ? project.color : undefined,
-                            }}
-                            title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksForDate.length} Aufgaben)` : ''}`}
-                          />
-                          {hasTask && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="absolute top-0 right-0 h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setTaskToDelete({ date: day, projectId: project.id });
-                              }}
-                            >
-                              <X className="h-3 w-3 text-red-500" />
-                            </Button>
-                          )}
-                        </div>
+                          onClick={() => onSelect(day, project.id)}
+                          className={`
+                            aspect-square
+                            ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
+                            ${isSelected ? 'ring-1 ring-blue-500' : ''}
+                            transition-colors
+                          `}
+                          style={{
+                            backgroundColor: hasTask ? project.color : undefined,
+                          }}
+                          title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksByProject[project.id][dateStr]} Aufgaben)` : ''}`}
+                        />
                       );
                     })}
                   </div>
@@ -244,27 +158,9 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog 
-        open={!!taskToDelete} 
-        onOpenChange={(open) => !open && setTaskToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Aufgaben löschen</AlertDialogTitle>
-            <AlertDialogDescription>
-              Möchten Sie wirklich alle Aufgaben für den {taskToDelete ? format(taskToDelete.date, "d. MMMM yyyy", { locale: de }) : ""} löschen?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              Abbrechen
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTask}>
-              {deleteTask.isPending ? "Wird gelöscht..." : "Löschen"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <div className="text-xs sm:text-sm text-gray-600">
+        Ausgewählt: {format(selectedDate, "d. MMMM yyyy", { locale: de })}
+      </div>
     </motion.div>
   );
 }

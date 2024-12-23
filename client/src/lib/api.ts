@@ -1,9 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
-import type { InsertProject, InsertTask, Project, Task } from "@db/schema";
+import type { InsertProject, InsertTask } from "@db/schema";
 
 export function useTasks(startDate?: Date, endDate?: Date) {
-  return useQuery<Task[]>({
+  return useQuery({
     queryKey: ["/api/tasks", startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -18,7 +18,7 @@ export function useTasks(startDate?: Date, endDate?: Date) {
 }
 
 export function useProjects() {
-  return useQuery<Project[]>({
+  return useQuery({
     queryKey: ["/api/projects"],
   });
 }
