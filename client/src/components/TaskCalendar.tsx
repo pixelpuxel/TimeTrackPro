@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useTasks, useProjects } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachDayOfInterval } from "date-fns";
+import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay } from "date-fns";
 import type { Project, Task } from "@db/schema";
 
 interface TaskCalendarProps {
@@ -25,6 +25,20 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     return acc;
   }, {});
 
+  // Organize days by week for vertical layout
+  const weeksByProject: Record<number, Record<number, Date[]>> = {};
+  projects.forEach((project) => {
+    weeksByProject[project.id] = {};
+    days.forEach((day) => {
+      const weekNum = getWeek(day);
+      if (!weeksByProject[project.id][weekNum]) {
+        weeksByProject[project.id][weekNum] = Array(7).fill(null);
+      }
+      const dayIndex = getDay(day); // 0 = Sunday, 1 = Monday, etc.
+      weeksByProject[project.id][weekNum][dayIndex] = day;
+    });
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -47,30 +61,35 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
               <h3 className="font-semibold">{project.name}</h3>
             </div>
 
-            <div className="grid grid-cols-53 gap-[1px] bg-gray-200 rounded-lg p-0.5 sm:p-1 min-w-[300px] overflow-x-auto">
-              {days.map((day) => {
-                const dateStr = format(day, "yyyy-MM-dd");
-                const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
-                const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
+            <div className="grid grid-cols-52 gap-[1px] bg-gray-200 p-0.5 min-w-[300px] overflow-x-auto">
+              {Object.values(weeksByProject[project.id]).map((week, weekIndex) => (
+                <div key={weekIndex} className="grid grid-rows-7 gap-[1px]">
+                  {week.map((day, dayIndex) => {
+                    if (!day) return <div key={dayIndex} className="w-2 h-2 bg-gray-100" />;
 
-                return (
-                  <button
-                    key={dateStr}
-                    onClick={() => onSelect(day)}
-                    className={`
-                      w-2 h-2 sm:w-3 sm:h-3 rounded-[2px] flex items-center justify-center
-                      ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
-                      ${isSelected ? 'ring-1 ring-blue-500' : ''}
-                      transition-colors
-                    `}
-                    style={{
-                      backgroundColor: hasTask ? project.color : undefined,
-                    }}
-                    title={`${format(day, "MMMM d, yyyy")}${hasTask ? ` (${tasksByProject[project.id][dateStr]} tasks)` : ''}`}
-                  >
-                  </button>
-                );
-              })}
+                    const dateStr = format(day, "yyyy-MM-dd");
+                    const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
+                    const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
+
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() => onSelect(day)}
+                        className={`
+                          w-2 h-2
+                          ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
+                          ${isSelected ? 'ring-1 ring-blue-500' : ''}
+                          transition-colors
+                        `}
+                        style={{
+                          backgroundColor: hasTask ? project.color : undefined,
+                        }}
+                        title={`${format(day, "MMMM d, yyyy")}${hasTask ? ` (${tasksByProject[project.id][dateStr]} tasks)` : ''}`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         </motion.div>
