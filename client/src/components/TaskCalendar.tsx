@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useTasks, useProjects, useUpdateProject, useDeleteTask } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay } from "date-fns";
+import { format, startOfYear, endOfYear, eachDayOfInterval, getDay, startOfWeek, addDays } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -50,22 +50,26 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   }, {});
 
   // Organize days into weeks for the grid layout
-  const weeksByProject: { [key: number]: (Date | null)[][] } = {};
+  const weeksByProject: { [key: number]: Date[][] } = {};
   (projects as Project[]).forEach((project) => {
     weeksByProject[project.id] = [];
-    let currentWeek: (Date | null)[] = Array(7).fill(null);
+    let currentWeek: Date[] = [];
+    let currentDate = startDate;
 
-    days.forEach((day) => {
-      const dayOfWeek = getDay(day);
-      currentWeek[dayOfWeek] = day;
-
-      if (dayOfWeek === 6) {
+    while (currentDate <= endDate) {
+      if (getDay(currentDate) === 0 && currentWeek.length > 0) {
         weeksByProject[project.id].push(currentWeek);
-        currentWeek = Array(7).fill(null);
+        currentWeek = [];
       }
-    });
+      currentWeek.push(currentDate);
+      currentDate = addDays(currentDate, 1);
+    }
 
-    if (currentWeek.some(day => day !== null)) {
+    if (currentWeek.length > 0) {
+      // Fill the last week with remaining days
+      while (currentWeek.length < 7) {
+        currentWeek.push(addDays(currentWeek[currentWeek.length - 1], 1));
+      }
       weeksByProject[project.id].push(currentWeek);
     }
   });
@@ -132,17 +136,6 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                 style={{ backgroundColor: project.color }}
               />
               <h3 className="font-semibold">{project.name}</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={() => {
-                  setProjectToEdit(project);
-                  setEditName(project.name);
-                }}
-              >
-                <Pencil className="h-4 w-4 text-gray-500" />
-              </Button>
             </div>
 
             <div className="w-full overflow-x-auto">
@@ -150,8 +143,6 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                 {weeksByProject[project.id].map((week, weekIndex) => (
                   <div key={weekIndex} className="grid grid-rows-7 gap-[1px] aspect-[1/7] w-full">
                     {week.map((day, dayIndex) => {
-                      if (!day) return <div key={dayIndex} className="bg-gray-100" />;
-
                       const dateStr = format(day, "yyyy-MM-dd");
                       const tasksForDate = tasksByProject[project.id]?.[dateStr] || [];
                       const hasTask = tasksForDate.length > 0;
@@ -163,7 +154,10 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                           className="relative group"
                         >
                           <button
-                            onClick={() => onSelect(day, project.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelect(day, project.id);
+                            }}
                             className={`
                               w-full h-full
                               ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
