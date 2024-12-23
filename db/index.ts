@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle } from "drizzle-orm/neon-serverless";
 import { neon, neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
 import * as schema from "@db/schema";
@@ -19,8 +19,8 @@ export const db = drizzle(sql, { schema });
 // Export a function to test the connection
 export async function testConnection() {
   try {
-    const result = await sql`SELECT 1`;
-    console.log('Database connection test succeeded');
+    const result = await sql`SELECT NOW()`;
+    console.log('Database connection test succeeded:', result);
     return true;
   } catch (error) {
     console.error('Database connection test failed:', error);
