@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useTasks, useProjects, useUpdateProject } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachDayOfInterval, addDays, addYears, subYears, isSameYear, isWithinInterval, isSameDay, isLeapYear } from "date-fns";
+import { format, startOfYear, endOfYear, addDays, addYears, subYears, isSameYear, isWithinInterval, isSameDay, isLeapYear } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,9 +29,15 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const startDate = startOfYear(currentYear);
   const endDate = endOfYear(currentYear);
   const daysInYear = isLeapYear(currentYear) ? 366 : 365;
+  const columnsNeeded = Math.ceil(daysInYear / 7);
 
   // Generate array of all days in the year
   const days = Array.from({ length: daysInYear }, (_, i) => addDays(startDate, i));
+
+  // Organize days into columns (7 days per column)
+  const columns = Array.from({ length: columnsNeeded }, (_, i) => 
+    days.slice(i * 7, (i + 1) * 7)
+  );
 
   const { data: tasks = [], isLoading: isLoadingTasks } = useTasks(startDate, endDate);
   const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
@@ -157,46 +163,52 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
             </div>
 
             <div className="w-full overflow-x-auto">
-              <div className="grid grid-cols-[repeat(31,minmax(0,1fr))] gap-[1px] bg-gray-200 p-0.5 w-full">
-                {days.map((day, index) => {
-                  const dateStr = format(day, "yyyy-MM-dd");
-                  const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
-                  const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
-                  const isOutsideYear = !isSameYear(day, currentYear);
-                  const isRangeStart = rangeStart && isSameDay(day, rangeStart);
-                  const isRangeEnd = rangeEnd && isSameDay(day, rangeEnd);
-                  const isInSelectedRange = isInRange(day);
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(70px,1fr))] gap-[1px] bg-gray-200 p-0.5 w-full"> {/* Changed grid-cols */}
+                {columns.map((column, colIndex) => (
+                  <div key={colIndex} className="grid grid-rows-7 gap-[1px]"> {/* Nested grid for columns */}
+                    {column.map((day, index) => {
+                      if (!day) return null;
+                      const dateStr = format(day, "yyyy-MM-dd");
+                      const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
+                      const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
+                      const isOutsideYear = !isSameYear(day, currentYear);
+                      const isRangeStart = rangeStart && isSameDay(day, rangeStart);
+                      const isRangeEnd = rangeEnd && isSameDay(day, rangeEnd);
+                      const isInSelectedRange = isInRange(day);
+                      const dayNumber = colIndex * 7 + index + 1;
 
-                  return (
-                    <button
-                      key={dateStr}
-                      onClick={() => !isOutsideYear && handleDateClick(day, project.id)}
-                      disabled={isOutsideYear}
-                      className={`
-                        aspect-square relative
-                        ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
-                        ${isSelected ? 'ring-2 ring-blue-500' : ''}
-                        ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
-                        ${isRangeStart ? 'rounded-l-md' : ''}
-                        ${isRangeEnd ? 'rounded-r-md' : ''}
-                        ${isInSelectedRange ? 'bg-blue-100' : ''}
-                        transition-colors
-                        group
-                      `}
-                      style={{
-                        backgroundColor: hasTask && !isOutsideYear ? project.color : undefined,
-                      }}
-                      title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksByProject[project.id][dateStr]} Aufgaben)` : ''}`}
-                    >
-                      <span className="absolute inset-0 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100">
-                        {index + 1}
-                      </span>
-                      {(isRangeStart || isRangeEnd) && (
-                        <div className="absolute inset-0 bg-blue-500 opacity-20 rounded-md" />
-                      )}
-                    </button>
-                  );
-                })}
+                      return (
+                        <button
+                          key={dateStr}
+                          onClick={() => !isOutsideYear && handleDateClick(day, project.id)}
+                          disabled={isOutsideYear}
+                          className={`
+                            aspect-square relative
+                            ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
+                            ${isSelected ? 'ring-2 ring-blue-500' : ''}
+                            ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
+                            ${isRangeStart ? 'rounded-l-md' : ''}
+                            ${isRangeEnd ? 'rounded-r-md' : ''}
+                            ${isInSelectedRange ? 'bg-blue-100' : ''}
+                            transition-colors
+                            group
+                          `}
+                          style={{
+                            backgroundColor: hasTask && !isOutsideYear ? project.color : undefined,
+                          }}
+                          title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksByProject[project.id][dateStr]} Aufgaben)` : ''}`}
+                        >
+                          <span className="absolute inset-0 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100">
+                            {dayNumber}
+                          </span>
+                          {(isRangeStart || isRangeEnd) && (
+                            <div className="absolute inset-0 bg-blue-500 opacity-20 rounded-md" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -227,7 +239,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
               </div>
             </div>
             <Button 
-              onClick={() => projectToEdit && handleUpdateProject(projectToEdit)} 
+              onClick={() => projectToEdit && handleUpdateProject(projectToEdit)}
               className="w-full"
               disabled={updateProject.isPending || !editName.trim() || !editColor.trim()}
             >
