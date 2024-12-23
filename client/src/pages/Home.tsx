@@ -8,6 +8,8 @@ import type { Task } from "@db/schema";
 
 export function Home() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // Only fetch tasks for the selected date
   const { data: tasks = [] } = useTasks(selectedDate, selectedDate);
 
   const tasksByProject = (tasks as Task[]).reduce((acc: Record<string, Task[]>, task: Task) => {
@@ -28,6 +30,9 @@ export function Home() {
               selectedDate={selectedDate}
               onSelect={(date) => date && setSelectedDate(date)}
             />
+            <div className="mt-4 text-sm text-gray-600">
+              * Dates with tasks are highlighted in blue
+            </div>
           </div>
 
           <div className="space-y-6">

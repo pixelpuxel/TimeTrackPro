@@ -1,7 +1,7 @@
 import { Calendar } from "@/components/ui/calendar";
 import { motion } from "framer-motion";
 import { useTasks } from "@/lib/api";
-import { format } from "date-fns";
+import { format, startOfYear, endOfYear } from "date-fns";
 
 interface TaskCalendarProps {
   selectedDate: Date;
@@ -9,10 +9,10 @@ interface TaskCalendarProps {
 }
 
 export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
-  const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-  const endOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
-  
-  const { data: tasks = [] } = useTasks(startOfMonth, endOfMonth);
+  const startDate = startOfYear(selectedDate);
+  const endDate = endOfYear(selectedDate);
+
+  const { data: tasks = [] } = useTasks(startDate, endDate);
 
   const tasksByDate = tasks.reduce((acc: Record<string, number>, task: any) => {
     const date = format(new Date(task.date), "yyyy-MM-dd");
