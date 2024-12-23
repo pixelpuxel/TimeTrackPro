@@ -13,9 +13,10 @@ export function Home() {
   const { data: tasks = [] } = useTasks(selectedDate, selectedDate);
 
   const tasksByProject = (tasks as Task[]).reduce((acc: Record<string, Task[]>, task: Task) => {
-    const projectName = task.project?.name || "No Project";
-    if (!acc[projectName]) acc[projectName] = [];
-    acc[projectName].push(task);
+    if (!task.projectId) return acc;
+    const projectId = task.projectId.toString();
+    if (!acc[projectId]) acc[projectId] = [];
+    acc[projectId].push(task);
     return acc;
   }, {});
 
@@ -39,16 +40,16 @@ export function Home() {
             <TaskInput date={selectedDate} />
 
             <AnimatePresence>
-              {Object.entries(tasksByProject).map(([projectName, projectTasks], index) => (
+              {Object.entries(tasksByProject).map(([projectId, projectTasks], index) => (
                 <motion.div
-                  key={projectName}
+                  key={projectId}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.1 }}
                   className="bg-white p-4 rounded-lg shadow-sm"
                 >
-                  <h3 className="font-semibold text-lg mb-3">{projectName}</h3>
+                  <h3 className="font-semibold text-lg mb-3">Project {projectId}</h3>
                   <div>
                     Task completed on {format(selectedDate, "MMMM d, yyyy")}
                   </div>
