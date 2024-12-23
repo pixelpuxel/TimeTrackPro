@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { useProjects, useCreateProject, useDeleteProject } from "@/lib/api";
-import { Trash2 } from "lucide-react";
+import { useProjects, useCreateProject, useDeleteProject, useUpdateProject } from "@/lib/api";
+import { Trash2, Pencil } from "lucide-react";
 import type { Project } from "@db/schema";
 
 interface ProjectSelectorProps {
@@ -23,10 +23,14 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
   const [openNewProject, setOpenNewProject] = useState(false);
   const [openProjectList, setOpenProjectList] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({ name: "", color: "#6366f1" });
+  const [editName, setEditName] = useState("");
+
   const { data: projects = [] } = useProjects();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
+  const updateProject = useUpdateProject();
 
   const handleCreateProject = async () => {
     try {
@@ -42,11 +46,20 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
     try {
       await deleteProject.mutateAsync(project.id);
       if (value === project.id) {
-        onChange(0); // Reset selection if the deleted project was selected
+        onChange(0);
       }
       setProjectToDelete(null);
     } catch (error) {
       console.error("Failed to delete project:", error);
+    }
+  };
+
+  const handleUpdateProject = async (project: Project) => {
+    try {
+      await updateProject.mutateAsync({ id: project.id, name: editName });
+      setProjectToEdit(null);
+    } catch (error) {
+      console.error("Failed to update project:", error);
     }
   };
 
@@ -129,6 +142,16 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                       style={{ backgroundColor: project.color }}
                     />
                     <span>{project.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setProjectToEdit(project);
+                        setEditName(project.name);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 text-gray-500" />
+                    </Button>
                   </div>
                   <AlertDialog open={projectToDelete?.id === project.id} onOpenChange={(open) => !open && setProjectToDelete(null)}>
                     <AlertDialogTrigger asChild>
@@ -153,6 +176,24 @@ export function ProjectSelector({ value, onChange }: ProjectSelectorProps) {
                   </AlertDialog>
                 </div>
               ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!projectToEdit} onOpenChange={(open) => !open && setProjectToEdit(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Projekt umbenennen</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder="Neuer Projektname"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+              <Button onClick={() => projectToEdit && handleUpdateProject(projectToEdit)} className="w-full">
+                Speichern
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

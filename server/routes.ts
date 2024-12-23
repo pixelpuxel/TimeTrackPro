@@ -28,6 +28,25 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // New endpoint for updating project name
+  app.patch("/api/projects/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name } = req.body;
+
+      const updated = await db
+        .update(projects)
+        .set({ name })
+        .where(eq(projects.id, parseInt(id)))
+        .returning();
+
+      res.json(updated[0]);
+    } catch (error) {
+      console.error("Error updating project:", error);
+      res.status(500).json({ message: "Failed to update project" });
+    }
+  });
+
   app.delete("/api/projects/:id", async (req, res) => {
     try {
       const { id } = req.params;
