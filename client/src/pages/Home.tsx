@@ -31,7 +31,7 @@ export function Home() {
               onSelect={(date) => date && setSelectedDate(date)}
             />
             <div className="mt-4 text-sm text-gray-600">
-              * Dates with tasks are highlighted in blue
+              * Colored squares indicate completed tasks
             </div>
           </div>
 
@@ -49,18 +49,8 @@ export function Home() {
                   className="bg-white p-4 rounded-lg shadow-sm"
                 >
                   <h3 className="font-semibold text-lg mb-3">{projectName}</h3>
-                  <div className="space-y-2">
-                    {projectTasks.map((task: Task) => (
-                      <div
-                        key={task.id}
-                        className="flex justify-between items-center p-2 bg-gray-50 rounded"
-                      >
-                        <span>{task.title}</span>
-                        <span className="text-sm text-gray-500">
-                          {task.duration} minutes
-                        </span>
-                      </div>
-                    ))}
+                  <div>
+                    Task completed on {format(selectedDate, "MMMM d, yyyy")}
                   </div>
                 </motion.div>
               ))}

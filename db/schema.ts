@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, timestamp, integer, text } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -11,7 +11,6 @@ export const projects = pgTable("projects", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
-  title: text("title").notNull(),
   projectId: integer("project_id").references(() => projects.id),
   date: timestamp("date").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull()
