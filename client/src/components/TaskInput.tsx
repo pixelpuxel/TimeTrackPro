@@ -14,9 +14,8 @@ interface TaskInputProps {
 export function TaskInput({ date }: TaskInputProps) {
   const [task, setTask] = useState<Partial<InsertTask>>({
     title: "",
-    duration: 30,
     projectId: undefined,
-    date: date // Initialize with the passed date
+    date: date
   });
 
   const createTask = useCreateTask();
@@ -27,14 +26,12 @@ export function TaskInput({ date }: TaskInputProps) {
 
     await createTask.mutateAsync({
       ...task,
-      date: new Date(date), // Ensure it's a proper Date object
-      duration: task.duration || 30,
+      date: new Date(date),
       projectId: task.projectId
     } as InsertTask);
 
     setTask({
       title: "",
-      duration: 30,
       projectId: task.projectId,
       date: date
     });
@@ -58,22 +55,10 @@ export function TaskInput({ date }: TaskInputProps) {
           onChange={(e) => setTask({ ...task, title: e.target.value })}
         />
 
-        <div className="flex gap-4">
-          <Input
-            type="number"
-            min="1"
-            max="1440"
-            placeholder="Duration (minutes)"
-            value={task.duration}
-            onChange={(e) => setTask({ ...task, duration: parseInt(e.target.value) })}
-            className="w-32"
-          />
-
-          <ProjectSelector
-            value={task.projectId}
-            onChange={(projectId) => setTask({ ...task, projectId })}
-          />
-        </div>
+        <ProjectSelector
+          value={task.projectId}
+          onChange={(projectId) => setTask({ ...task, projectId })}
+        />
 
         <Button type="submit" className="w-full">
           Add Task

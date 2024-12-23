@@ -14,7 +14,6 @@ export const tasks = pgTable("tasks", {
   title: text("title").notNull(),
   projectId: integer("project_id").references(() => projects.id),
   date: timestamp("date").notNull(),
-  duration: integer("duration").notNull(), // in minutes
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
