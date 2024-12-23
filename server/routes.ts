@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { projects, tasks } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { parse } from "csv-parse";
+import { stringify } from "csv-stringify";
 
 export function registerRoutes(app: Express): Server {
   // Projects endpoints
@@ -28,7 +30,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // New endpoint for updating project name
   app.patch("/api/projects/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -121,6 +122,85 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task" });
+    }
+  });
+
+  // New CSV export endpoint
+  app.get("/api/export/csv", async (_req, res) => {
+    try {
+      const allTasks = await db.query.tasks.findMany({
+        with: {
+          project: true
+        },
+        orderBy: (tasks, { desc }) => [desc(tasks.date)]
+      });
+
+      const csvData = allTasks.map(task => ({
+        date: new Date(task.date).toISOString().split('T')[0],
+        project_name: task.project?.name || '',
+        project_color: task.project?.color || ''
+      }));
+
+      stringify(csvData, {
+        header: true,
+        columns: ['date', 'project_name', 'project_color']
+      }, (err, output) => {
+        if (err) throw err;
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=tasks.csv');
+        res.send(output);
+      });
+    } catch (error) {
+      console.error("Error exporting CSV:", error);
+      res.status(500).json({ message: "Failed to export CSV" });
+    }
+  });
+
+  // New CSV import endpoint
+  app.post("/api/import/csv", async (req, res) => {
+    try {
+      const records: any[] = [];
+      const parser = parse({
+        columns: true,
+        skip_empty_lines: true
+      });
+
+      parser.on('readable', async function() {
+        let record;
+        while ((record = parser.read()) !== null) {
+          records.push(record);
+        }
+      });
+
+      parser.on('end', async function() {
+        for (const record of records) {
+          // First ensure the project exists
+          let project = await db.query.projects.findFirst({
+            where: eq(projects.name, record.project_name)
+          });
+
+          if (!project) {
+            const [newProject] = await db.insert(projects).values({
+              name: record.project_name,
+              color: record.project_color || '#6366f1'
+            }).returning();
+            project = newProject;
+          }
+
+          // Then create the task
+          await db.insert(tasks).values({
+            date: new Date(record.date),
+            projectId: project.id
+          });
+        }
+        res.json({ message: `Imported ${records.length} records successfully` });
+      });
+
+      parser.write(req.body);
+      parser.end();
+    } catch (error) {
+      console.error("Error importing CSV:", error);
+      res.status(500).json({ message: "Failed to import CSV" });
     }
   });
 

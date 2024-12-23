@@ -1,15 +1,21 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { TaskCalendar } from "@/components/TaskCalendar";
 import { TaskInput } from "@/components/TaskInput";
-import { useTasks } from "@/lib/api";
+import { useTasks, exportToCSV, useImportCSV } from "@/lib/api";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { Download, Upload } from "lucide-react";
 import type { Task } from "@db/schema";
 
 export function Home() {
+  const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedProject, setSelectedProject] = useState<number>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importCSV = useImportCSV();
 
   // Only fetch tasks for the selected date
   const { data: tasks = [] } = useTasks(selectedDate, selectedDate);
@@ -27,10 +33,64 @@ export function Home() {
     setSelectedProject(projectId);
   };
 
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await importCSV.mutateAsync(file);
+      toast({
+        title: "Import erfolgreich",
+        description: "Die Daten wurden erfolgreich importiert."
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler beim Import",
+        description: "Die Daten konnten nicht importiert werden.",
+        variant: "destructive"
+      });
+    } finally {
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1400px] mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Zeiterfassung</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Zeiterfassung</h1>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportToCSV}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleImportCSV}
+              ref={fileInputRef}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2"
+              disabled={importCSV.isPending}
+            >
+              <Upload className="h-4 w-4" />
+              {importCSV.isPending ? "Importiere..." : "Import CSV"}
+            </Button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1fr,400px] gap-6">
           <div>

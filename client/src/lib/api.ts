@@ -57,6 +57,23 @@ export function useCreateProject() {
   });
 }
 
+export function useUpdateProject() {
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      if (!res.ok) throw new Error("Failed to update project");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    }
+  });
+}
+
 export function useDeleteProject() {
   return useMutation({
     mutationFn: async (projectId: number) => {
@@ -86,18 +103,26 @@ export function useDeleteTask() {
   });
 }
 
-export function useUpdateProject() {
+// New CSV export function
+export function exportToCSV() {
+  window.open("/api/export/csv", "_blank");
+}
+
+// New CSV import mutation
+export function useImportCSV() {
   return useMutation({
-    mutationFn: async ({ id, name }: { id: number; name: string }) => {
-      const res = await fetch(`/api/projects/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
+    mutationFn: async (file: File) => {
+      const text = await file.text();
+      const res = await fetch("/api/import/csv", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: text
       });
-      if (!res.ok) throw new Error("Failed to update project");
+      if (!res.ok) throw new Error("Failed to import CSV");
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
     }
   });
