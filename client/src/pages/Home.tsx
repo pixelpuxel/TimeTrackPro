@@ -37,7 +37,10 @@ export function Home() {
           </div>
 
           <div className="space-y-6">
-            <TaskInput date={selectedDate} />
+            <TaskInput 
+              date={selectedDate} 
+              onDateChange={setSelectedDate}
+            />
 
             <AnimatePresence>
               {Object.entries(tasksByProject).map(([projectId, projectTasks], index) => (

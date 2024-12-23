@@ -5,12 +5,17 @@ import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "./ProjectSelector";
 import { useCreateTask } from "@/lib/api";
 import type { InsertTask } from "@db/schema";
+import { Calendar } from "@/components/ui/calendar";
+import { PopoverTrigger, PopoverContent, Popover } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
 
 interface TaskInputProps {
   date: Date;
+  onDateChange: (date: Date) => void;
 }
 
-export function TaskInput({ date }: TaskInputProps) {
+export function TaskInput({ date, onDateChange }: TaskInputProps) {
   const [projectId, setProjectId] = useState<number>();
   const createTask = useCreateTask();
 
@@ -36,6 +41,29 @@ export function TaskInput({ date }: TaskInputProps) {
       </h2>
 
       <div className="space-y-3">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                !date && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {format(date, "PPP")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(date) => date && onDateChange(date)}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+
         <ProjectSelector
           value={projectId}
           onChange={setProjectId}
