@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useTasks, useProjects, useUpdateProject } from "@/lib/api";
-import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay, addYears, subYears, isWithinInterval } from "date-fns";
+import { format, startOfYear, endOfYear, eachDayOfInterval, getWeek, getDay, addYears, subYears, isWithinInterval, startOfWeek, endOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,7 +25,14 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   // Calculate year boundaries - exactly from Jan 1 to Dec 31
   const startDate = startOfYear(currentYear);
   const endDate = endOfYear(currentYear);
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+  // Get the start of the week for Jan 1st and end of the week for Dec 31st
+  // This ensures we have complete weeks for the grid layout
+  const calendarStart = startOfWeek(startDate, { locale: de });
+  const calendarEnd = endOfWeek(endDate, { locale: de });
+
+  // Get all days including the padding days
+  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const { data: tasks = [], isLoading: isLoadingTasks } = useTasks(startDate, endDate);
   const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
