@@ -42,7 +42,6 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
 
   const handleUpdateProject = async () => {
     if (!projectToEdit) return;
-
     try {
       await updateProject.mutateAsync({
         id: projectToEdit.id,
@@ -87,11 +86,13 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6 w-full"
     >
-      <div className="flex items-center justify-between mb-4">
+      {/* Year navigation */}
+      <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setCurrentYear(subYears(currentYear, 1))}
+          className="text-gray-600 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -102,11 +103,13 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
           variant="ghost"
           size="sm"
           onClick={() => setCurrentYear(addYears(currentYear, 1))}
+          className="text-gray-600 hover:text-gray-900"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
+      {/* Projects and calendar grid */}
       {(projects as Project[]).map((project) => (
         <motion.div
           key={project.id}
@@ -154,9 +157,9 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                           disabled={isOutsideYear}
                           className={`
                             aspect-square
-                            ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
+                            ${hasTask ? 'hover:opacity-80' : 'hover:bg-gray-50'}
                             ${isSelected ? 'ring-2 ring-blue-500' : ''}
-                            ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
+                            ${isOutsideYear ? 'opacity-25 cursor-not-allowed bg-gray-200' : 'bg-white'}
                             transition-colors
                           `}
                           style={{
@@ -174,6 +177,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
         </motion.div>
       ))}
 
+      {/* Project edit dialog */}
       <Dialog open={!!projectToEdit} onOpenChange={(open) => !open && setProjectToEdit(null)}>
         <DialogContent>
           <DialogHeader>
