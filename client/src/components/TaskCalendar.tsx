@@ -5,7 +5,7 @@ import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Pencil, ChevronLeft, ChevronRight, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Task } from "@db/schema";
@@ -24,6 +24,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const [editColor, setEditColor] = useState("");
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Calculate year boundaries for the current year view
   const startDate = startOfYear(currentYear);
@@ -39,9 +40,20 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     days.slice(i * 7, (i + 1) * 7)
   );
 
-  const { data: tasks = [], isLoading: isLoadingTasks } = useTasks(startDate, endDate);
-  const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
+  const { data: tasks = [], isLoading: isLoadingTasks, error: tasksError } = useTasks(startDate, endDate);
+  const { data: projects = [], isLoading: isLoadingProjects, error: projectsError } = useProjects();
   const updateProject = useUpdateProject();
+
+  useEffect(() => {
+    if (tasksError) {
+      console.error('Tasks loading error:', tasksError);
+      setError('Failed to load tasks. Please try again later.');
+    }
+    if (projectsError) {
+      console.error('Projects loading error:', projectsError);
+      setError('Failed to load projects. Please try again later.');
+    }
+  }, [tasksError, projectsError]);
 
   // Group tasks by project and date
   const tasksByProject = (tasks as Task[]).reduce((acc: Record<number, Record<string, number>>, task: Task) => {
@@ -67,6 +79,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
         description: "Der Projektname und die Farbe wurden erfolgreich geändert."
       });
     } catch (error) {
+      console.error('Project update error:', error);
       toast({
         title: "Fehler",
         description: "Projekt konnte nicht aktualisiert werden.",
@@ -93,14 +106,25 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     }
   };
 
-  if (isLoadingTasks || isLoadingProjects) {
-    return <div className="p-4 text-center">Lädt...</div>;
-  }
-
   const isInRange = (date: Date) => {
     if (!rangeStart || !rangeEnd) return false;
     return isWithinInterval(date, { start: rangeStart, end: rangeEnd });
   };
+
+  if (isLoadingTasks || isLoadingProjects) {
+    return <div className="p-4 text-center">Lädt...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center text-red-500">
+        <p>{error}</p>
+        <Button onClick={() => setError(null)} className="mt-4">
+          Erneut versuchen
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -163,9 +187,9 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
             </div>
 
             <div className="w-full overflow-x-auto">
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(70px,1fr))] gap-[1px] bg-gray-200 p-0.5 w-full"> {/* Changed grid-cols */}
+              <div className="inline-grid grid-flow-col auto-cols-[minmax(70px,1fr)] gap-[1px] bg-gray-200 p-0.5">
                 {columns.map((column, colIndex) => (
-                  <div key={colIndex} className="grid grid-rows-7 gap-[1px]"> {/* Nested grid for columns */}
+                  <div key={colIndex} className="grid grid-rows-7 gap-[1px]">
                     {column.map((day, index) => {
                       if (!day) return null;
                       const dateStr = format(day, "yyyy-MM-dd");
