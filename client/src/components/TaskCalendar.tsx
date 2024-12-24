@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, ChevronLeft, ChevronRight, Palette, CheckCircle2, Calendar } from "lucide-react";
+import { Pencil, ChevronLeft, ChevronRight, Palette, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Task } from "@db/schema";
 import { DateRangePreview } from "./DateRangePreview";
@@ -30,12 +30,16 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const startDate = startOfYear(currentYear);
   const endDate = endOfYear(currentYear);
   const daysInYear = isLeapYear(currentYear) ? 366 : 365;
-  const daysPerColumn = 7;
-  const columnsNeeded = Math.ceil(daysInYear / daysPerColumn);
+  const ROWS = 7;
+  const daysPerRow = Math.ceil(daysInYear / ROWS);
+
+  // Generate array of all days in the year
   const days = Array.from({ length: daysInYear }, (_, i) => addDays(startDate, i));
-  const columns = Array.from({ length: columnsNeeded }, (_, colIndex) => {
-    const start = colIndex * daysPerColumn;
-    return days.slice(start, start + daysPerColumn);
+
+  // Organize days into 7 rows
+  const rows = Array.from({ length: ROWS }, (_, rowIndex) => {
+    const start = rowIndex * daysPerRow;
+    return days.slice(start, start + daysPerRow);
   });
 
   const { data: tasks = [], isLoading: isLoadingTasks, error: tasksError } = useTasks(startDate, endDate);
@@ -127,7 +131,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6 w-full"
+      className="space-y-6"
     >
       <div className="flex items-center justify-between mb-4">
         <Button
@@ -160,10 +164,10 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
           key={project.id}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-2 sm:p-4 bg-white rounded-lg shadow-sm w-full"
+          className="p-4 bg-white rounded-lg shadow-sm"
         >
-          <div className="space-y-2 sm:space-y-4">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
               <div 
                 className="w-3 h-3 rounded-full" 
                 style={{ backgroundColor: project.color }}
@@ -183,10 +187,10 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
               </Button>
             </div>
 
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(20px,1fr))] gap-px bg-gray-200 p-0.5 rounded-lg">
-              {columns.map((column, colIndex) => (
-                <div key={colIndex} className="flex flex-col gap-px">
-                  {column.map((day, index) => {
+            <div className="grid grid-rows-7 gap-px bg-gray-200 p-0.5 rounded-lg">
+              {rows.map((row, rowIndex) => (
+                <div key={rowIndex} className="grid grid-cols-[repeat(auto-fit,minmax(20px,1fr))] gap-px">
+                  {row.map((day, index) => {
                     if (!day) return null;
                     const dateStr = format(day, "yyyy-MM-dd");
                     const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
@@ -195,7 +199,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                     const isRangeStart = rangeStart && isSameDay(day, rangeStart);
                     const isRangeEnd = rangeEnd && isSameDay(day, rangeEnd);
                     const isInSelectedRange = isInRange(day);
-                    const dayNumber = colIndex * daysPerColumn + index + 1;
+                    const dayNumber = rowIndex * daysPerRow + index + 1;
 
                     return (
                       <TooltipProvider key={dateStr}>
@@ -209,8 +213,8 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                                 ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
                                 ${isSelected ? 'ring-2 ring-blue-500' : ''}
                                 ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
-                                ${isRangeStart ? 'rounded-t-md' : ''}
-                                ${isRangeEnd ? 'rounded-b-md' : ''}
+                                ${isRangeStart ? 'rounded-l-md' : ''}
+                                ${isRangeEnd ? 'rounded-r-md' : ''}
                                 ${isInSelectedRange ? 'bg-blue-100' : ''}
                                 transition-colors
                                 group
