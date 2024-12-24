@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Project, Task } from "@db/schema";
 import { DateRangePreview } from "./DateRangePreview";
 import { useTasks, useProjects, useUpdateProject } from "@/lib/api";
+import React from 'react';
 
 interface TaskCalendarProps {
   selectedDate: Date;
@@ -31,15 +32,17 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const endDate = endOfYear(currentYear);
   const daysInYear = isLeapYear(currentYear) ? 366 : 365;
   const ROWS = 7;
-  const daysPerRow = Math.ceil(daysInYear / ROWS);
+  const COLS = Math.ceil(daysInYear / ROWS);
 
   // Generate array of all days in the year
   const days = Array.from({ length: daysInYear }, (_, i) => addDays(startDate, i));
 
-  // Organize days into 7 rows
-  const rows = Array.from({ length: ROWS }, (_, rowIndex) => {
-    const start = rowIndex * daysPerRow;
-    return days.slice(start, start + daysPerRow);
+  // Organize days into columns (weeks), flowing vertically
+  const columns = Array.from({ length: COLS }, (_, colIndex) => {
+    return Array.from({ length: ROWS }, (_, rowIndex) => {
+      const dayIndex = colIndex * ROWS + rowIndex;
+      return dayIndex < daysInYear ? days[dayIndex] : null;
+    });
   });
 
   const { data: tasks = [], isLoading: isLoadingTasks, error: tasksError } = useTasks(startDate, endDate);
@@ -187,70 +190,62 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
               </Button>
             </div>
 
-            <div className="grid grid-rows-7 gap-px bg-gray-200 p-0.5 rounded-lg">
-              {rows.map((row, rowIndex) => (
-                <div key={rowIndex} className="grid grid-cols-[repeat(auto-fit,minmax(20px,1fr))] gap-px">
-                  {row.map((day, index) => {
-                    if (!day) return null;
-                    const dateStr = format(day, "yyyy-MM-dd");
-                    const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
-                    const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
-                    const isOutsideYear = !isSameYear(day, currentYear);
-                    const isRangeStart = rangeStart && isSameDay(day, rangeStart);
-                    const isRangeEnd = rangeEnd && isSameDay(day, rangeEnd);
-                    const isInSelectedRange = isInRange(day);
-                    const dayNumber = rowIndex * daysPerRow + index + 1;
+            <div className="w-full overflow-x-auto">
+              <div className="inline-grid grid-rows-7 grid-flow-col gap-px bg-gray-200 p-0.5 rounded-lg min-w-fit">
+                {columns.map((column, colIndex) => (
+                  <React.Fragment key={colIndex}>
+                    {column.map((day, rowIndex) => {
+                      if (!day) return null;
+                      const dateStr = format(day, "yyyy-MM-dd");
+                      const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
+                      const isSelected = isSameDay(selectedDate, day);
+                      const isOutsideYear = !isSameYear(day, currentYear);
+                      const isRangeStart = rangeStart && isSameDay(day, rangeStart);
+                      const isRangeEnd = rangeEnd && isSameDay(day, rangeEnd);
+                      const isInSelectedRange = isInRange(day);
 
-                    return (
-                      <TooltipProvider key={dateStr}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => !isOutsideYear && handleDateClick(day, project.id)}
-                              disabled={isOutsideYear}
-                              className={`
-                                aspect-square relative
-                                ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
-                                ${isSelected ? 'ring-2 ring-blue-500' : ''}
-                                ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
-                                ${isRangeStart ? 'rounded-l-md' : ''}
-                                ${isRangeEnd ? 'rounded-r-md' : ''}
-                                ${isInSelectedRange ? 'bg-blue-100' : ''}
-                                transition-colors
-                                group
-                                text-[10px] sm:text-xs
-                              `}
-                              style={{
-                                backgroundColor: hasTask && !isOutsideYear ? project.color : undefined,
-                              }}
-                            >
-                              <span className="absolute inset-0 flex items-center justify-center">
-                                {dayNumber}
-                              </span>
-                              {(isRangeStart || isRangeEnd) && (
-                                <div className="absolute inset-0 bg-blue-500 opacity-20 rounded-md" />
-                              )}
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="p-2">
-                            <div className="space-y-1">
-                              <div className="font-medium">
-                                {format(day, "d. MMMM yyyy", { locale: de })}
-                              </div>
-                              {hasTask && (
-                                <div className="flex items-center gap-1 text-sm text-gray-600">
-                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                  <span>{tasksByProject[project.id][dateStr]} Aufgaben</span>
+                      return (
+                        <TooltipProvider key={`${colIndex}-${rowIndex}`}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => !isOutsideYear && handleDateClick(day, project.id)}
+                                disabled={isOutsideYear}
+                                className={`
+                                  w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6
+                                  ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
+                                  ${isSelected ? 'ring-2 ring-blue-500' : ''}
+                                  ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
+                                  ${isRangeStart ? 'rounded-l-md' : ''}
+                                  ${isRangeEnd ? 'rounded-r-md' : ''}
+                                  ${isInSelectedRange ? 'bg-blue-100' : ''}
+                                  transition-colors
+                                `}
+                                style={{
+                                  backgroundColor: hasTask && !isOutsideYear ? project.color : undefined,
+                                }}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="p-2">
+                              <div className="space-y-1">
+                                <div className="font-medium">
+                                  {format(day, "d. MMMM yyyy", { locale: de })}
                                 </div>
-                              )}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    );
-                  })}
-                </div>
-              ))}
+                                {hasTask && (
+                                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    <span>{tasksByProject[project.id][dateStr]} Aufgaben</span>
+                                  </div>
+                                )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
           </div>
         </motion.div>
@@ -275,7 +270,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                   type="color" 
                   value={editColor} 
                   onChange={(e) => setEditColor(e.target.value)} 
-                  className="h-10 p-1"
+                  className="w-full"
                 />
               </div>
             </div>
