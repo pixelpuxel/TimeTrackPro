@@ -30,15 +30,19 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
   const startDate = startOfYear(currentYear);
   const endDate = endOfYear(currentYear);
   const daysInYear = isLeapYear(currentYear) ? 366 : 365;
-  const columnsNeeded = Math.ceil(daysInYear / 7);
+
+  // Calculate number of columns needed (53 for both 365 and 366 days)
+  const daysPerColumn = 7;
+  const columnsNeeded = Math.ceil(daysInYear / daysPerColumn);
 
   // Generate array of all days in the year
   const days = Array.from({ length: daysInYear }, (_, i) => addDays(startDate, i));
 
   // Organize days into columns (7 days per column)
-  const columns = Array.from({ length: columnsNeeded }, (_, i) => 
-    days.slice(i * 7, (i + 1) * 7)
-  );
+  const columns = Array.from({ length: columnsNeeded }, (_, colIndex) => {
+    const start = colIndex * daysPerColumn;
+    return days.slice(start, start + daysPerColumn);
+  });
 
   const { data: tasks = [], isLoading: isLoadingTasks, error: tasksError } = useTasks(startDate, endDate);
   const { data: projects = [], isLoading: isLoadingProjects, error: projectsError } = useProjects();
@@ -186,54 +190,53 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
               </Button>
             </div>
 
-            <div className="w-full overflow-x-auto">
-              <div className="inline-grid grid-flow-col auto-cols-[minmax(70px,1fr)] gap-[1px] bg-gray-200 p-0.5">
-                {columns.map((column, colIndex) => (
-                  <div key={colIndex} className="grid grid-rows-7 gap-[1px]">
-                    {column.map((day, index) => {
-                      if (!day) return null;
-                      const dateStr = format(day, "yyyy-MM-dd");
-                      const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
-                      const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
-                      const isOutsideYear = !isSameYear(day, currentYear);
-                      const isRangeStart = rangeStart && isSameDay(day, rangeStart);
-                      const isRangeEnd = rangeEnd && isSameDay(day, rangeEnd);
-                      const isInSelectedRange = isInRange(day);
-                      const dayNumber = colIndex * 7 + index + 1;
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(20px,1fr))] gap-px bg-gray-200 p-0.5 rounded-lg">
+              {columns.map((column, colIndex) => (
+                <div key={colIndex} className="flex flex-col gap-px">
+                  {column.map((day, index) => {
+                    if (!day) return null;
+                    const dateStr = format(day, "yyyy-MM-dd");
+                    const hasTask = !!(tasksByProject[project.id]?.[dateStr]);
+                    const isSelected = format(selectedDate, "yyyy-MM-dd") === dateStr;
+                    const isOutsideYear = !isSameYear(day, currentYear);
+                    const isRangeStart = rangeStart && isSameDay(day, rangeStart);
+                    const isRangeEnd = rangeEnd && isSameDay(day, rangeEnd);
+                    const isInSelectedRange = isInRange(day);
+                    const dayNumber = colIndex * daysPerColumn + index + 1;
 
-                      return (
-                        <button
-                          key={dateStr}
-                          onClick={() => !isOutsideYear && handleDateClick(day, project.id)}
-                          disabled={isOutsideYear}
-                          className={`
-                            aspect-square relative
-                            ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
-                            ${isSelected ? 'ring-2 ring-blue-500' : ''}
-                            ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
-                            ${isRangeStart ? 'rounded-l-md' : ''}
-                            ${isRangeEnd ? 'rounded-r-md' : ''}
-                            ${isInSelectedRange ? 'bg-blue-100' : ''}
-                            transition-colors
-                            group
-                          `}
-                          style={{
-                            backgroundColor: hasTask && !isOutsideYear ? project.color : undefined,
-                          }}
-                          title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksByProject[project.id][dateStr]} Aufgaben)` : ''}`}
-                        >
-                          <span className="absolute inset-0 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100">
-                            {dayNumber}
-                          </span>
-                          {(isRangeStart || isRangeEnd) && (
-                            <div className="absolute inset-0 bg-blue-500 opacity-20 rounded-md" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() => !isOutsideYear && handleDateClick(day, project.id)}
+                        disabled={isOutsideYear}
+                        className={`
+                          aspect-square relative
+                          ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
+                          ${isSelected ? 'ring-2 ring-blue-500' : ''}
+                          ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
+                          ${isRangeStart ? 'rounded-t-md' : ''}
+                          ${isRangeEnd ? 'rounded-b-md' : ''}
+                          ${isInSelectedRange ? 'bg-blue-100' : ''}
+                          transition-colors
+                          group
+                          text-[10px] sm:text-xs
+                        `}
+                        style={{
+                          backgroundColor: hasTask && !isOutsideYear ? project.color : undefined,
+                        }}
+                        title={`${format(day, "d. MMMM yyyy", { locale: de })}${hasTask ? ` (${tasksByProject[project.id][dateStr]} Aufgaben)` : ''}`}
+                      >
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          {dayNumber}
+                        </span>
+                        {(isRangeStart || isRangeEnd) && (
+                          <div className="absolute inset-0 bg-blue-500 opacity-20 rounded-md" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         </motion.div>
