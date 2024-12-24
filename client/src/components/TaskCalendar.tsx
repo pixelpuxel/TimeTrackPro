@@ -190,8 +190,8 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
               </Button>
             </div>
 
-            <div className="w-full overflow-x-auto">
-              <div className="inline-grid grid-rows-7 grid-flow-col gap-px bg-gray-200 p-0.5 rounded-lg min-w-fit">
+            <div className="w-full">
+              <div className="grid grid-rows-7 grid-cols-[repeat(52,minmax(0,1fr))] gap-px bg-gray-200 p-0.5 rounded-lg">
                 {columns.map((column, colIndex) => (
                   <React.Fragment key={colIndex}>
                     {column.map((day, rowIndex) => {
@@ -212,7 +212,7 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                                 onClick={() => !isOutsideYear && handleDateClick(day, project.id)}
                                 disabled={isOutsideYear}
                                 className={`
-                                  w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6
+                                  w-full aspect-square
                                   ${hasTask ? 'hover:opacity-80' : 'bg-white hover:bg-gray-50'}
                                   ${isSelected ? 'ring-2 ring-blue-500' : ''}
                                   ${isOutsideYear ? 'opacity-50 cursor-not-allowed bg-gray-200' : ''}
@@ -223,6 +223,8 @@ export function TaskCalendar({ selectedDate, onSelect }: TaskCalendarProps) {
                                 `}
                                 style={{
                                   backgroundColor: hasTask && !isOutsideYear ? project.color : undefined,
+                                  gridColumn: colIndex + 1,
+                                  gridRow: rowIndex + 1
                                 }}
                               />
                             </TooltipTrigger>
