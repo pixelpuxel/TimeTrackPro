@@ -8,7 +8,7 @@ app.use(express.json());
 app.use(express.text()); // Add support for text/plain for CSV import
 app.use(express.urlencoded({ extended: false }));
 
-// Request logging middleware
+// Enhanced logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
